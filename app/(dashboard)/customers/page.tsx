@@ -47,12 +47,14 @@ export default function CustomersPage() {
     setEditing(null);
   };
 
-  const formatDate = (s: string) =>
-    new Date(s).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const formatDate = (s: string | undefined) =>
+    s
+      ? new Date(s).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : "—";
 
   return (
     <div className="w-full px-4 py-6 sm:px-6 sm:py-8 md:mx-auto md:max-w-6xl">
