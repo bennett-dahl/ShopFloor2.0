@@ -65,7 +65,8 @@ export async function GET(request: NextRequest) {
       currentPage: page,
       total,
     });
-  } catch {
+  } catch (err) {
+    console.error("[GET /api/workorders]", err);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
@@ -95,7 +96,8 @@ export async function POST(request: NextRequest) {
       { path: "completedBy", select: "name" },
     ]);
     return NextResponse.json(workOrder, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error("[POST /api/workorders]", err);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
