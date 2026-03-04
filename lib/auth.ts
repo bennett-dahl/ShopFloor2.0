@@ -4,7 +4,7 @@ import GoogleProvider from "next-auth/providers/google";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   trustHost: true,
   providers: [
     GoogleProvider({
@@ -53,7 +53,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
-};
+} as NextAuthOptions;
 
 export async function getAuthSession() {
   return getServerSession(authOptions);

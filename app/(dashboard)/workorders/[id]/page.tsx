@@ -144,7 +144,7 @@ export default function WorkOrderDetailPage() {
       .then((wo) => {
         if (cancelled) return;
         const v = wo.vehicle as Vehicle;
-        const customerId = typeof wo.customer === "object" && wo.customer != null ? (wo.customer as Customer)._id : (wo as { customer: string }).customer;
+        const customerId = typeof wo.customer === "object" && wo.customer != null ? (wo.customer as Customer)._id : (wo as unknown as { customer: string }).customer;
         setForm({
           customer: customerId ?? "",
           vehicle: v._id,
@@ -552,7 +552,7 @@ export default function WorkOrderDetailPage() {
         open={addPartModalForRow !== null}
         onClose={() => setAddPartModalForRow(null)}
         onSaved={async (part) => {
-          await refetchOptions();
+          await refetchPartsAndServices();
           if (addPartModalForRow !== null) {
             const i = addPartModalForRow;
             setForm((f) => {
@@ -569,7 +569,7 @@ export default function WorkOrderDetailPage() {
         open={addServiceModalForRow !== null}
         onClose={() => setAddServiceModalForRow(null)}
         onSaved={async (service) => {
-          await refetchOptions();
+          await refetchPartsAndServices();
           if (addServiceModalForRow !== null) {
             const i = addServiceModalForRow;
             setForm((f) => {
