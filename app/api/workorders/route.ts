@@ -4,6 +4,10 @@ import { requireAuth } from "@/lib/api-auth";
 import WorkOrder from "@/models/WorkOrder";
 import Vehicle from "@/models/Vehicle";
 import Customer from "@/models/Customer";
+// Ensure refs used by populate are registered (required in serverless when this route runs in isolation)
+import "@/models/Part";
+import "@/models/Service";
+import "@/models/User";
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth();
