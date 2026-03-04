@@ -1,0 +1,24 @@
+---
+description: Create tests for new functionality and run tests when making changes
+alwaysApply: true
+---
+
+# Testing Requirements
+
+## New functionality
+
+- When adding or changing API routes, handlers, or backend behavior, add or update tests in `tests/api/` to cover the new or changed behavior.
+- Follow the existing pattern: use `tests/helpers/request.ts` and `tests/helpers/auth.ts`, and mirror the route structure (e.g. new `POST /api/foo` → tests in `tests/api/foo.test.ts` or extend an existing file).
+- New features that touch the database should have at least one test that hits the route (integration-style); add unit tests for non-trivial logic if it lives in `lib/` or shared modules.
+
+## When to run tests
+
+- After implementing a new API route or changing request/response shape: run `npm run test` and fix any failures before considering the change done.
+- After changing auth, models, or shared helpers: run the full suite and fix regressions.
+- When fixing a bug: add a test that reproduces the bug (or extend an existing test), then fix; run tests to confirm.
+- Prefer running tests at natural breakpoints (e.g. after completing a route or a set of related changes) rather than after every single file edit.
+
+## Commands
+
+- `npm run test` — run full suite once (use before commits and after meaningful changes).
+- `npm run test:watch` — watch mode while iterating on code or tests.

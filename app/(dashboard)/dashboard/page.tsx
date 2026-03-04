@@ -1,0 +1,248 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+import { get } from "@/lib/api";
+
+type Stats = {
+  customers: number;
+  vehicles: number;
+  workOrders: number;
+  parts: number;
+};
+
+type WorkOrderItem = {
+  _id: string;
+  description: string;
+  workOrderDate: string;
+  status: string;
+  vehicle?: { make: string; model: string; year: number };
+};
+
+export default function DashboardPage() {
+  const { data: session } = useSession();
+  const [stats, setStats] = useState<Stats>({
+    customers: 0,
+    vehicles: 0,
+    workOrders: 0,
+    parts: 0,
+  });
+  const [recentWorkOrders, setRecentWorkOrders] = useState<WorkOrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [customersRes, vehiclesRes, workOrdersRes, partsRes, recentRes] =
+          await Promise.all([
+            get<{ total: number }>("/customers?limit=1"),
+            get<{ total: number }>("/vehicles?limit=1"),
+            get<{ total: number }>("/workorders?limit=1"),
+            get<{ total: number }>("/parts?limit=1"),
+            get<{ workOrders: WorkOrderItem[] }>("/workorders?limit=5"),
+          ]);
+        if (cancelled) return;
+        setStats({
+          customers: customersRes.total,
+          vehicles: vehiclesRes.total,
+          workOrders: workOrdersRes.total,
+          parts: partsRes.total,
+        });
+        setRecentWorkOrders(recentRes.workOrders);
+      } catch {
+        if (!cancelled) setRecentWorkOrders([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+
+  return (
+    <div className="w-full px-4 py-6 sm:px-6 sm:py-8 md:mx-auto md:max-w-6xl">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          Dashboard
+        </h1>
+        <p className="mt-1 text-zinc-700 dark:text-zinc-400">
+          Welcome back, {session?.user?.name ?? "User"}! Here&apos;s what&apos;s
+          happening at Throttle Therapy Shop.
+        </p>
+      </div>
+
+      <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-800">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl dark:bg-indigo-900/50">
+              👥
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {stats.customers}
+              </p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                Total Customers
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-800">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl dark:bg-indigo-900/50">
+              🚗
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {stats.vehicles}
+              </p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                Vehicles in System
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-800">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl dark:bg-indigo-900/50">
+              🔧
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {stats.workOrders}
+              </p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                Work Orders This Month
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-800">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-2xl dark:bg-indigo-900/50">
+              ⚙️
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                {stats.parts}
+              </p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                Parts in Inventory
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-800 lg:col-span-2">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            Recent Work Orders
+          </h2>
+          {loading ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-indigo-600" />
+              <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                Loading recent work orders...
+              </p>
+            </div>
+          ) : recentWorkOrders.length === 0 ? (
+            <p className="py-8 text-center text-zinc-700 dark:text-zinc-400">
+              No recent work orders found.
+            </p>
+          ) : (
+            <ul className="space-y-3">
+              {recentWorkOrders.map((wo) => (
+                <li key={wo._id}>
+                  <Link
+                    href={`/workorders/${wo._id}`}
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 py-3 px-4 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-700/50"
+                  >
+                    <div>
+                      <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                        {wo.description}
+                      </p>
+                      <p className="text-sm text-zinc-700 dark:text-zinc-400">
+                        {wo.vehicle
+                          ? `${wo.vehicle.make} ${wo.vehicle.model} ${wo.vehicle.year}`
+                          : ""}
+                      </p>
+                      <span className="text-xs text-zinc-600 dark:text-zinc-500">
+                        {formatDate(wo.workOrderDate)}
+                      </span>
+                    </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        wo.status === "completed"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                          : wo.status === "in_progress"
+                            ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                      }`}
+                    >
+                      {wo.status.replace("_", " ")}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="rounded-xl bg-white p-6 shadow-sm dark:bg-zinc-800">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+            Quick Actions
+          </h2>
+          <div className="grid gap-3">
+            <Link
+              href="/customers"
+              className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+            >
+              <span className="text-2xl">👥</span>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                Add Customer
+              </span>
+            </Link>
+            <Link
+              href="/vehicles"
+              className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+            >
+              <span className="text-2xl">🚗</span>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                Add Vehicle
+              </span>
+            </Link>
+            <Link
+              href="/workorders"
+              className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+            >
+              <span className="text-2xl">🔧</span>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                New Work Order
+              </span>
+            </Link>
+            <Link
+              href="/parts"
+              className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+            >
+              <span className="text-2xl">⚙️</span>
+              <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                Add Part
+              </span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

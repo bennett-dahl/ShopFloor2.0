@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/.pnpm
+node_modules
+
+# Next.js
+.next/
+out/
+
+# Env (keep .env.example)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug
+npm-debug.log*
+.pnpm-debug.log*
+
+# Vercel
+.vercel
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
