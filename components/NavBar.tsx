@@ -3,26 +3,58 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTheme } from "@/components/ThemeProvider";
 
-const navLinks = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/customers", label: "Customers" },
-  { href: "/vehicles", label: "Vehicles" },
-  { href: "/workorders", label: "Work Orders" },
-  { href: "/alignments", label: "Advanced Alignments" },
-  { href: "/settings", label: "Settings" },
+const navGroups = [
+  {
+    label: "Operations",
+    links: [
+      { href: "/workorders", label: "Work Orders" },
+      { href: "/alignments", label: "Alignments" },
+    ],
+  },
+  {
+    label: "Directory",
+    links: [
+      { href: "/customers", label: "Customers" },
+      { href: "/vehicles", label: "Vehicles" },
+    ],
+  },
 ];
 
 export default function NavBar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
+  const groupRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    if (!openGroup) return;
+    const close = (e: MouseEvent) => {
+      if (groupRef.current && !groupRef.current.contains(e.target as Node)) {
+        setOpenGroup(null);
+      }
+    };
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [openGroup]);
 
   const linkClass = (href: string) =>
     `block rounded px-3 py-2 text-sm font-medium transition-colors ${
-      pathname === href
+      pathname === href || pathname.startsWith(href + "/")
+        ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
+        : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+    }`;
+
+  const isGroupActive = (group: (typeof navGroups)[0]) =>
+    group.links.some((l) => pathname === l.href || pathname.startsWith(l.href + "/"));
+
+  const groupButtonClass = (group: (typeof navGroups)[0]) =>
+    `rounded px-3 py-2 text-sm font-medium transition-colors ${
+      openGroup === group.label || isGroupActive(group)
         ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
         : "text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
     }`;
@@ -41,11 +73,49 @@ export default function NavBar() {
 
             {/* Desktop nav */}
             <div className="hidden flex-1 items-center gap-1 md:flex md:justify-center">
-              {navLinks.map(({ href, label }) => (
-                <Link key={href} href={href} className={linkClass(href)}>
-                  {label}
-                </Link>
+              <Link href="/dashboard" className={linkClass("/dashboard")}>
+                Dashboard
+              </Link>
+              {navGroups.map((group) => (
+                <div key={group.label} className="relative" ref={openGroup === group.label ? groupRef : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenGroup(openGroup === group.label ? null : group.label)}
+                    className={groupButtonClass(group)}
+                    aria-expanded={openGroup === group.label}
+                    aria-haspopup="true"
+                  >
+                    {group.label}
+                    <svg
+                      className={`ml-1 inline h-4 w-4 transition-transform ${openGroup === group.label ? "rotate-180" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  {openGroup === group.label && (
+                    <div className="absolute left-0 top-full z-10 mt-1 min-w-[10rem] rounded-md border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
+                      {group.links.map(({ href, label }) => (
+                        <Link
+                          key={href}
+                          href={href}
+                          className={`block px-3 py-2 ${pathname === href || pathname.startsWith(href + "/") ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50" : "text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                          onClick={() => setOpenGroup(null)}
+                        >
+                          {label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
+              <Link href="/settings" className={linkClass("/settings")}>
+                Settings
+              </Link>
             </div>
 
             <div className="flex items-center gap-2">
@@ -103,16 +173,56 @@ export default function NavBar() {
           aria-label="Mobile menu"
         >
           <div className="space-y-1 pb-3 pt-2">
-            {navLinks.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className={linkClass(href)}
-                onClick={() => setMenuOpen(false)}
-              >
-                {label}
-              </Link>
+            <Link
+              href="/dashboard"
+              className={linkClass("/dashboard")}
+              onClick={() => setMenuOpen(false)}
+            >
+              Dashboard
+            </Link>
+            {navGroups.map((group) => (
+              <div key={group.label}>
+                <button
+                  type="button"
+                  onClick={() => setMobileExpanded(mobileExpanded === group.label ? null : group.label)}
+                  className="flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                  aria-expanded={mobileExpanded === group.label}
+                >
+                  {group.label}
+                  <svg
+                    className={`h-4 w-4 transition-transform ${mobileExpanded === group.label ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                {mobileExpanded === group.label && (
+                  <div className="space-y-1 border-l-2 border-zinc-200 pl-3 dark:border-zinc-700">
+                    {group.links.map(({ href, label }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        className={linkClass(href)}
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        {label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
+            <Link
+              href="/settings"
+              className={linkClass("/settings")}
+              onClick={() => setMenuOpen(false)}
+            >
+              Settings
+            </Link>
           </div>
         </div>
       </div>

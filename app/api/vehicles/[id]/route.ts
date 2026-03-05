@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import Vehicle from "@/models/Vehicle";
+import WorkOrder from "@/models/WorkOrder";
 import mongoose from "mongoose";
 
 export async function GET(
@@ -60,6 +61,13 @@ export async function PUT(
       return NextResponse.json(
         { message: "Vehicle not found" },
         { status: 404 }
+      );
+    }
+    // If the vehicle's customer was updated, propagate to related work orders
+    if (Object.prototype.hasOwnProperty.call(body, "customer") && vehicle.customer) {
+      await WorkOrder.updateMany(
+        { vehicle: id },
+        { customer: vehicle.customer }
       );
     }
     return NextResponse.json(vehicle);
