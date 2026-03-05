@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function PartsRedirectPage() {
+export default function SettingsPage() {
   redirect("/settings/parts");
 }

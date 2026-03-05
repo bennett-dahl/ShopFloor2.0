@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
-import WorkOrder from "@/models/WorkOrder";
+import WorkOrder, { getNextWorkOrderNumber } from "@/models/WorkOrder";
 import Vehicle from "@/models/Vehicle";
 import Customer from "@/models/Customer";
 // Ensure refs used by populate are registered (required in serverless when this route runs in isolation)
@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
       const searchConditions: Record<string, unknown>[] = [
         { description: regex },
         { workType: regex },
+        { workOrderNumber: regex },
       ];
       const vehicleYear = Number(search);
       const vehicleOr: Record<string, unknown>[] = [
@@ -88,8 +89,10 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    const workOrderNumber = await getNextWorkOrderNumber(WorkOrder);
     const workOrderData = {
       ...body,
+      workOrderNumber,
       customer: vehicle.customer,
       completedBy: authResult.session.user.id,
     };

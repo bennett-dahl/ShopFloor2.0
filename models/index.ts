@@ -15,3 +15,14 @@ export type {
   IServiceUsed,
   IOtherWork,
 } from "./WorkOrder";
+export { default as Setting } from "./Setting";
+export type { ISetting } from "./Setting";
+export { default as AlignmentTemplate } from "./AlignmentTemplate";
+export type { IAlignmentTemplate } from "./AlignmentTemplate";
+export { default as Alignment } from "./Alignment";
+export type { IAlignment, IAlignmentStep } from "./Alignment";
+export type {
+  IAlignmentSnapshot,
+  IAlignmentCorner,
+} from "./AlignmentSnapshot";
+export { alignmentSnapshotSchema } from "./AlignmentSnapshot";

@@ -51,6 +51,39 @@ describe("Work Orders API", () => {
       expect(status).toBe(200);
       expect(data).toMatchObject({ workOrders: [], total: 0 });
     });
+
+    it("returns work orders with workOrderNumber in list", async () => {
+      const vehicleId = await createCustomerAndVehicle();
+      await post(POST, "/api/workorders", {
+        vehicle: vehicleId,
+        workType: "maintenance",
+        description: "List test",
+        mileageAtService: 3000,
+        status: "scheduled",
+      });
+      const { status, data } = await get(GET, "/api/workorders");
+      expect(status).toBe(200);
+      const list = (data as { workOrders: { workOrderNumber?: string }[] }).workOrders;
+      expect(list.length).toBeGreaterThanOrEqual(1);
+      expect(list[0].workOrderNumber).toBeDefined();
+      expect(list[0].workOrderNumber).toMatch(/^WO-\d{4}$/);
+    });
+
+    it("finds work order by search on workOrderNumber", async () => {
+      const vehicleId = await createCustomerAndVehicle();
+      const { data: created } = await post(POST, "/api/workorders", {
+        vehicle: vehicleId,
+        workType: "inspection",
+        description: "Search by number",
+        mileageAtService: 4000,
+        status: "scheduled",
+      });
+      const woNum = (created as { workOrderNumber: string }).workOrderNumber;
+      const { status, data } = await get(GET, "/api/workorders", { search: woNum });
+      expect(status).toBe(200);
+      const list = (data as { workOrders: { workOrderNumber: string }[] }).workOrders;
+      expect(list.some((wo) => wo.workOrderNumber === woNum)).toBe(true);
+    });
   });
 
   describe("POST /api/workorders", () => {
@@ -81,9 +114,32 @@ describe("Work Orders API", () => {
         description: "Oil change",
         status: "scheduled",
       });
+      expect((data as { workOrderNumber: string }).workOrderNumber).toBeDefined();
+      expect((data as { workOrderNumber: string }).workOrderNumber).toMatch(/^WO-\d{4}$/);
       expect((data as { customer: unknown }).customer).toBeDefined();
       expect((data as { totalCost: number }).totalCost).toBeDefined();
-      expect(data._id).toBeDefined();
+      expect((data as { _id: string })._id).toBeDefined();
+    });
+
+    it("assigns sequential work order numbers", async () => {
+      const vehicleId = await createCustomerAndVehicle();
+      const { data: first } = await post(POST, "/api/workorders", {
+        vehicle: vehicleId,
+        workType: "maintenance",
+        description: "First",
+        mileageAtService: 1000,
+        status: "scheduled",
+      });
+      const { data: second } = await post(POST, "/api/workorders", {
+        vehicle: vehicleId,
+        workType: "repair",
+        description: "Second",
+        mileageAtService: 2000,
+        status: "scheduled",
+      });
+      const n1 = parseInt((first as { workOrderNumber: string }).workOrderNumber.replace(/^WO-/, ""), 10);
+      const n2 = parseInt((second as { workOrderNumber: string }).workOrderNumber.replace(/^WO-/, ""), 10);
+      expect(n2).toBe(n1 + 1);
     });
   });
 
@@ -91,6 +147,22 @@ describe("Work Orders API", () => {
     it("returns 404 for non-existent id", async () => {
       const { status } = await getById(GET_ID, "/api/workorders", validId);
       expect(status).toBe(404);
+    });
+
+    it("returns work order with workOrderNumber when exists", async () => {
+      const vehicleId = await createCustomerAndVehicle();
+      const { data: created } = await post(POST, "/api/workorders", {
+        vehicle: vehicleId,
+        workType: "maintenance",
+        description: "Get test",
+        mileageAtService: 5000,
+        status: "scheduled",
+      });
+      const id = (created as { _id: string })._id;
+      const { status, data } = await getById(GET_ID, "/api/workorders", id);
+      expect(status).toBe(200);
+      expect((data as { workOrderNumber: string }).workOrderNumber).toBeDefined();
+      expect((data as { workOrderNumber: string }).workOrderNumber).toMatch(/^WO-\d{4}$/);
     });
   });
 

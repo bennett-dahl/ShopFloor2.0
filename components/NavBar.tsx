@@ -11,8 +11,8 @@ const navLinks = [
   { href: "/customers", label: "Customers" },
   { href: "/vehicles", label: "Vehicles" },
   { href: "/workorders", label: "Work Orders" },
-  { href: "/parts", label: "Parts" },
-  { href: "/services", label: "Services" },
+  { href: "/alignments", label: "Advanced Alignments" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function NavBar() {

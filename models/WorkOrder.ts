@@ -36,6 +36,7 @@ export interface IOtherWork {
 
 export interface IWorkOrder {
   _id: mongoose.Types.ObjectId;
+  workOrderNumber: string;
   vehicle: mongoose.Types.ObjectId;
   customer: mongoose.Types.ObjectId;
   workType: (typeof WORK_TYPES)[number];
@@ -60,6 +61,11 @@ export interface IWorkOrder {
 
 const workOrderSchema = new Schema<IWorkOrder>(
   {
+    workOrderNumber: {
+      type: String,
+      unique: true,
+      sparse: true, // allow multiple nulls for backfill
+    },
     vehicle: {
       type: Schema.Types.ObjectId,
       ref: "Vehicle",
@@ -118,7 +124,27 @@ const workOrderSchema = new Schema<IWorkOrder>(
   { timestamps: false }
 );
 
-workOrderSchema.pre("save", function (this: IWorkOrder) {
+/** Get next work order number (WO-0001, WO-0002, ...). Used by API and pre-save backfill. */
+export async function getNextWorkOrderNumber(
+  model: Model<IWorkOrder>
+): Promise<string> {
+  const last = await model
+    .findOne({ workOrderNumber: { $regex: /^WO-\d+$/ } })
+    .sort({ workOrderNumber: -1 })
+    .select("workOrderNumber")
+    .lean();
+  const num =
+    last?.workOrderNumber &&
+    /^WO-\d+$/.test(last.workOrderNumber)
+      ? parseInt(last.workOrderNumber.replace(/^WO-/, ""), 10) + 1
+      : 1;
+  return `WO-${String(num).padStart(4, "0")}`;
+}
+
+workOrderSchema.pre("save", async function (this: IWorkOrder & { constructor: Model<IWorkOrder> }) {
+  if (!this.workOrderNumber) {
+    this.workOrderNumber = await getNextWorkOrderNumber(this.constructor);
+  }
   this.updatedAt = new Date();
   let totalCost = 0;
   if (this.laborHours != null && this.laborRate != null) {

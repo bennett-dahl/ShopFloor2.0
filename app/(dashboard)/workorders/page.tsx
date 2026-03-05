@@ -25,6 +25,7 @@ type OtherWork = { description: string; quantity: number; unitPrice: number };
 
 type WorkOrder = {
   _id: string;
+  workOrderNumber?: string;
   vehicle: Vehicle;
   customer: Customer;
   workType: string;
@@ -152,7 +153,7 @@ export default function WorkOrdersPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">
-                      {c?.firstName} {c?.lastName}
+                      {wo.workOrderNumber ?? wo._id} · {c?.firstName} {c?.lastName}
                     </h3>
                     <p className="text-zinc-700 dark:text-zinc-400">
                       {v?.year} {v?.make} {v?.model}

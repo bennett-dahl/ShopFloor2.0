@@ -253,6 +253,7 @@ async function seed() {
       const laborHours = 0.5 + (i % 3) * 0.5;
       const laborRate = laborRates[i % laborRates.length];
       const wo = new WorkOrder({
+        workOrderNumber: `WO-${String(i + 1).padStart(4, "0")}`,
         vehicle: vehicle._id,
         customer: vehicle.customer,
         workType: workTypes[i % workTypes.length],

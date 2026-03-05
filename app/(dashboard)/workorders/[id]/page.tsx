@@ -30,6 +30,7 @@ type OtherWork = { description: string; quantity: number; unitPrice: number };
 
 type WorkOrder = {
   _id: string;
+  workOrderNumber?: string;
   vehicle: Vehicle;
   customer: Customer;
   workType: string;
@@ -98,6 +99,8 @@ export default function WorkOrderDetailPage() {
   const [addVehicleModalOpen, setAddVehicleModalOpen] = useState(false);
   const [addPartModalForRow, setAddPartModalForRow] = useState<number | null>(null);
   const [addServiceModalForRow, setAddServiceModalForRow] = useState<number | null>(null);
+  const [workOrderNumber, setWorkOrderNumber] = useState("");
+  const [alignmentIdForWorkOrder, setAlignmentIdForWorkOrder] = useState<string | null>(null);
 
   const canChangeCustomerVehicle = isNew || allowChangeCustomerVehicle;
 
@@ -134,6 +137,23 @@ export default function WorkOrderDetailPage() {
   }, [form.customer, refetchVehiclesForCustomer]);
 
   useEffect(() => {
+    if (isNew || !id) return;
+    let cancelled = false;
+    get<{ alignments: { _id: string }[] }>(`/alignments?workOrderId=${id}&limit=1`)
+      .then((res) => {
+        if (cancelled) return;
+        const first = res.alignments?.[0];
+        setAlignmentIdForWorkOrder(first?._id ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setAlignmentIdForWorkOrder(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, isNew]);
+
+  useEffect(() => {
     if (isNew) {
       setForm(emptyForm);
       setLoading(false);
@@ -143,6 +163,7 @@ export default function WorkOrderDetailPage() {
     get<WorkOrder>(`/workorders/${id}`)
       .then((wo) => {
         if (cancelled) return;
+        setWorkOrderNumber(wo.workOrderNumber ?? "");
         const v = wo.vehicle as Vehicle;
         const customerId = typeof wo.customer === "object" && wo.customer != null ? (wo.customer as Customer)._id : (wo as unknown as { customer: string }).customer;
         setForm({
@@ -294,19 +315,37 @@ export default function WorkOrderDetailPage() {
             </svg>
           </Link>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            {isNew ? "New Work Order" : "Edit Work Order"}
+            {isNew
+              ? "New Work Order"
+              : `${workOrderNumber || id} · ${(() => {
+                  const c = customers.find((x) => x._id === form.customer);
+                  return c ? `${c.firstName} ${c.lastName}` : "";
+                })()} · ${(() => {
+                  const v = vehicles.find((x) => x._id === form.vehicle);
+                  return v ? vehicleShortLabel(v) : "";
+                })()}`}
           </h1>
         </div>
-        {!isNew && (
-          <button
-            type="button"
-            onClick={deleteWorkOrder}
-            disabled={deleting}
-            className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-800 dark:text-red-300 dark:hover:bg-red-900/20 disabled:opacity-70"
-          >
-            {deleting ? "Deleting..." : "Delete"}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!isNew && form.vehicle && (
+            <Link
+              href={alignmentIdForWorkOrder ? `/alignments/${alignmentIdForWorkOrder}` : `/alignments/new?vehicleId=${form.vehicle}&workOrderId=${id}`}
+              className="rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900/50 dark:bg-zinc-800 dark:text-indigo-300 dark:hover:bg-indigo-900/20"
+            >
+              Advanced Alignment
+            </Link>
+          )}
+          {!isNew && (
+            <button
+              type="button"
+              onClick={deleteWorkOrder}
+              disabled={deleting}
+              className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:bg-zinc-800 dark:text-red-300 dark:hover:bg-red-900/20 disabled:opacity-70"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          )}
+        </div>
       </div>
 
       <form onSubmit={save} className="space-y-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-800">

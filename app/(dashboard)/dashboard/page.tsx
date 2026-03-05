@@ -14,10 +14,12 @@ type Stats = {
 
 type WorkOrderItem = {
   _id: string;
+  workOrderNumber?: string;
   description: string;
   workOrderDate: string;
   status: string;
   vehicle?: { make: string; model: string; year: number };
+  customer?: { firstName: string; lastName: string };
 };
 
 export default function DashboardPage() {
@@ -171,12 +173,16 @@ export default function DashboardPage() {
                   >
                     <div>
                       <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                        {wo.description}
-                      </p>
-                      <p className="text-sm text-zinc-700 dark:text-zinc-400">
-                        {wo.vehicle
-                          ? `${wo.vehicle.make} ${wo.vehicle.model} ${wo.vehicle.year}`
+                        {wo.workOrderNumber ?? wo._id}
+                        {wo.customer
+                          ? ` · ${wo.customer.firstName} ${wo.customer.lastName}`
                           : ""}
+                        {wo.vehicle
+                          ? ` · ${wo.vehicle.year} ${wo.vehicle.make} ${wo.vehicle.model}`
+                          : ""}
+                      </p>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {wo.description}
                       </p>
                       <span className="text-xs text-zinc-600 dark:text-zinc-500">
                         {formatDate(wo.workOrderDate)}
@@ -232,7 +238,7 @@ export default function DashboardPage() {
               </span>
             </Link>
             <Link
-              href="/parts"
+              href="/settings/parts"
               className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
             >
               <span className="text-2xl">⚙️</span>
