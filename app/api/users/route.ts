@@ -3,6 +3,10 @@ import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
 import { errorResponse } from "@/lib/api-error";
 import User from "@/models/User";
+import Role from "@/models/Role";
+
+// Ensure populated model schema is registered (required for serverless cold starts)
+void Role;
 
 export async function GET() {
   const authResult = await requirePermissionForMethod("users", "GET");

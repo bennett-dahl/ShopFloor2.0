@@ -4,7 +4,17 @@ import { requirePermissionForMethod } from "@/lib/api-auth";
 import { errorResponse } from "@/lib/api-error";
 import WorkOrder from "@/models/WorkOrder";
 import Vehicle from "@/models/Vehicle";
+import Customer from "@/models/Customer";
+import User from "@/models/User";
+import Part from "@/models/Part";
+import Service from "@/models/Service";
 import mongoose from "mongoose";
+
+// Ensure populated model schemas are registered (required for serverless cold starts)
+void Customer;
+void User;
+void Part;
+void Service;
 
 export async function GET(
   request: NextRequest,

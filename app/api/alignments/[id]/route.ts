@@ -7,6 +7,7 @@ import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
 import AlignmentTemplate from "@/models/AlignmentTemplate";
 import User from "@/models/User";
+import Customer from "@/models/Customer";
 import mongoose from "mongoose";
 
 export async function GET(
@@ -25,6 +26,7 @@ export async function GET(
     void WorkOrder;
     void AlignmentTemplate;
     void User;
+    void Customer;
     const alignment = await Alignment.findById(id)
       .populate("vehicle")
       .populate({
@@ -61,6 +63,7 @@ export async function PUT(
     await connectDB();
     void AlignmentTemplate;
     void User;
+    void Customer;
     const body = await request.json();
     if (body.vehicle != null) {
       const vehicle = await Vehicle.findById(body.vehicle).lean();

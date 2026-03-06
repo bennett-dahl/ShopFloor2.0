@@ -7,6 +7,7 @@ import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
 import AlignmentTemplate from "@/models/AlignmentTemplate";
 import User from "@/models/User";
+import Customer from "@/models/Customer";
 
 export async function GET(request: NextRequest) {
   const authResult = await requirePermissionForMethod("alignments", request.method);
@@ -17,6 +18,7 @@ export async function GET(request: NextRequest) {
     void WorkOrder;
     void AlignmentTemplate;
     void User;
+    void Customer;
     const { searchParams } = new URL(request.url);
     const vehicleId = searchParams.get("vehicleId") ?? "";
     const workOrderId = searchParams.get("workOrderId") ?? "";
@@ -68,6 +70,7 @@ export async function POST(request: NextRequest) {
     void WorkOrder;
     void AlignmentTemplate;
     void User;
+    void Customer;
     const body = await request.json();
     const completedBy = authResult.session?.user?.id;
     const alignment = await Alignment.create({

@@ -5,6 +5,13 @@ import { errorResponse } from "@/lib/api-error";
 import WorkOrder from "@/models/WorkOrder";
 import mongoose from "mongoose";
 
+// Ensure populated model schemas are registered (required for serverless cold starts)
+import "@/models/Vehicle";
+import "@/models/Customer";
+import "@/models/User";
+import "@/models/Part";
+import "@/models/Service";
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
