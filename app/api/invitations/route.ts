@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Invitation from "@/models/Invitation";
 import User from "@/models/User";
 
@@ -15,8 +16,7 @@ export async function GET() {
       .lean();
     return NextResponse.json({ invitations });
   } catch (err) {
-    console.error("[GET /api/invitations]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "GET /api/invitations");
   }
 }
 
@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("[POST /api/invitations]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "POST /api/invitations");
   }
 }

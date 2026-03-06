@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Service from "@/models/Service";
 
 export async function GET(request: NextRequest) {
@@ -36,8 +37,8 @@ export async function GET(request: NextRequest) {
       currentPage: page,
       total,
     });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/services");
   }
 }
 
@@ -64,10 +65,6 @@ export async function POST(request: NextRequest) {
           : "Validation failed";
       return NextResponse.json({ message }, { status: 400 });
     }
-    console.error("POST /api/services error:", e);
-    return NextResponse.json(
-      { message: e.message ?? "Server error" },
-      { status: 500 }
-    );
+    return errorResponse(err, "POST /api/services");
   }
 }

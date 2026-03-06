@@ -1,5 +1,35 @@
 const API_BASE = "/api";
 
+interface ApiErrorResponse {
+  message?: string;
+  error?: string;
+  stack?: string;
+  context?: string;
+}
+
+function formatApiError(data: ApiErrorResponse, status: number): string {
+  const parts: string[] = [];
+
+  // Main error message
+  if (data.message) {
+    parts.push(data.message);
+  } else {
+    parts.push(`Request failed with status ${status}`);
+  }
+
+  // Error type (e.g., ValidationError, CastError)
+  if (data.error) {
+    parts.push(`[${data.error}]`);
+  }
+
+  // API context (e.g., PUT /api/workorders/[id])
+  if (data.context) {
+    parts.push(`(${data.context})`);
+  }
+
+  return parts.join(" ");
+}
+
 async function fetchApi(
   path: string,
   options: RequestInit = {}
@@ -25,7 +55,11 @@ async function fetchApi(
 export async function get<T>(path: string): Promise<T> {
   const res = await fetchApi(path);
   const data = await res.json();
-  if (!res.ok) throw new Error((data as { message?: string }).message ?? "Request failed");
+  if (!res.ok) {
+    const errorData = data as ApiErrorResponse;
+    if (errorData.stack) console.error("API Error Stack:", errorData.stack);
+    throw new Error(formatApiError(errorData, res.status));
+  }
   return data as T;
 }
 
@@ -35,7 +69,11 @@ export async function post<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error((data as { message?: string }).message ?? "Request failed");
+  if (!res.ok) {
+    const errorData = data as ApiErrorResponse;
+    if (errorData.stack) console.error("API Error Stack:", errorData.stack);
+    throw new Error(formatApiError(errorData, res.status));
+  }
   return data as T;
 }
 
@@ -45,7 +83,11 @@ export async function put<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error((data as { message?: string }).message ?? "Request failed");
+  if (!res.ok) {
+    const errorData = data as ApiErrorResponse;
+    if (errorData.stack) console.error("API Error Stack:", errorData.stack);
+    throw new Error(formatApiError(errorData, res.status));
+  }
   return data as T;
 }
 
@@ -55,7 +97,11 @@ export async function patch<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error((data as { message?: string }).message ?? "Request failed");
+  if (!res.ok) {
+    const errorData = data as ApiErrorResponse;
+    if (errorData.stack) console.error("API Error Stack:", errorData.stack);
+    throw new Error(formatApiError(errorData, res.status));
+  }
   return data as T;
 }
 
@@ -63,6 +109,8 @@ export async function del(path: string): Promise<void> {
   const res = await fetchApi(path, { method: "DELETE" });
   if (!res.ok) {
     const data = await res.json();
-    throw new Error((data as { message?: string }).message ?? "Request failed");
+    const errorData = data as ApiErrorResponse;
+    if (errorData.stack) console.error("API Error Stack:", errorData.stack);
+    throw new Error(formatApiError(errorData, res.status));
   }
 }

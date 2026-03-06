@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Setting from "@/models/Setting";
 import Role from "@/models/Role";
 import mongoose from "mongoose";
@@ -24,8 +25,8 @@ export async function GET() {
       if (!role) return NextResponse.json({ roleId: null });
     }
     return NextResponse.json({ roleId });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/settings/default-signup-role");
   }
 }
 
@@ -59,7 +60,7 @@ export async function PATCH(request: NextRequest) {
       { new: true, upsert: true }
     );
     return NextResponse.json({ roleId });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "PATCH /api/settings/default-signup-role");
   }
 }

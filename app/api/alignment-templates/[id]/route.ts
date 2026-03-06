@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import AlignmentTemplate from "@/models/AlignmentTemplate";
 import mongoose from "mongoose";
 
@@ -21,8 +22,8 @@ export async function GET(
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
     return NextResponse.json(template);
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/alignment-templates/[id]");
   }
 }
 
@@ -47,8 +48,8 @@ export async function PUT(
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
     return NextResponse.json(template);
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "PUT /api/alignment-templates/[id]");
   }
 }
 
@@ -69,7 +70,7 @@ export async function DELETE(
       return NextResponse.json({ message: "Template not found" }, { status: 404 });
     }
     return NextResponse.json({ message: "Template deleted" });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "DELETE /api/alignment-templates/[id]");
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Part from "@/models/Part";
 
 export async function GET(request: NextRequest) {
@@ -39,8 +40,8 @@ export async function GET(request: NextRequest) {
       currentPage: page,
       total,
     });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/parts");
   }
 }
 
@@ -60,6 +61,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "POST /api/parts");
   }
 }

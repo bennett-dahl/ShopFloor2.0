@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
 import Customer from "@/models/Customer";
@@ -31,8 +32,8 @@ export async function GET(
       );
     }
     return NextResponse.json(vehicle);
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/vehicles/[id]");
   }
 }
 
@@ -92,8 +93,7 @@ export async function PUT(
         { status: 400 }
       );
     }
-    console.error("[PUT /api/vehicles/[id]]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "PUT /api/vehicles/[id]");
   }
 }
 
@@ -124,7 +124,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json({ message: "Vehicle deactivated successfully" });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "DELETE /api/vehicles/[id]");
   }
 }

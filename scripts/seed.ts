@@ -1,28 +1,42 @@
 /**
- * Seed script: inserts ~15 customers, vehicles, parts, services, and work orders.
+ * Unified seed script: seeds roles, customers, vehicles, parts, services,
+ * work orders, alignments, alignment templates, and settings.
  *
- * Uses (in order):
- *   1. SEED_MONGODB_URI (use this to target Atlas: SEED_MONGODB_URI="mongodb+srv://..." npm run seed)
+ * MongoDB URI (in order of preference):
+ *   1. SEED_MONGODB_URI env var
  *   2. MONGODB_URI from .env.local
  *
- * Run: npm run seed           — add seed data (fails if part/service codes already exist)
- * Run: npm run seed -- --clear — clear workorders, vehicles, customers, parts, services then insert fresh seed data
+ * Usage:
+ *   npm run seed           — seed all data (upserts roles, fails if part/service codes exist)
+ *   npm run seed:clear     — clear existing data then seed fresh
+ *   npm run seed:fresh     — clear data, skip legacy user migration
+ *
+ * Direct invocation (bypasses npm arg issues on Windows):
+ *   npx tsx scripts/seed.ts --clear --no-migrate --debug
+ *
+ * Environment variables (alternative to CLI args):
+ *   SEED_CLEAR=1       — equivalent to --clear
+ *   SEED_NO_MIGRATE=1  — equivalent to --no-migrate
+ *   SEED_DEBUG=1       — equivalent to --debug
  */
 import { config } from "dotenv";
 import path from "path";
 
-// Load .env.local from project root first
 config({ path: path.resolve(process.cwd(), ".env.local") });
-// Allow override from .env (e.g. SEED_MONGODB_URI)
 config({ path: path.resolve(process.cwd(), ".env") });
 
 import mongoose from "mongoose";
 import connectDB from "../lib/db";
+import Role from "../models/Role";
 import Customer from "../models/Customer";
 import Vehicle from "../models/Vehicle";
 import Part from "../models/Part";
 import Service from "../models/Service";
 import WorkOrder from "../models/WorkOrder";
+import AlignmentTemplate from "../models/AlignmentTemplate";
+import Alignment from "../models/Alignment";
+import Setting from "../models/Setting";
+import { RESOURCES, type Resource } from "../lib/permissions";
 
 /** Redact password in URI for safe logging */
 function redactUri(uri: string): string {
@@ -42,8 +56,8 @@ function redactUri(uri: string): string {
 function normalizeUri(uri: string): string {
   try {
     const u = new URL(uri);
-    const path = u.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
-    if (!path || path === "?") {
+    const dbPath = u.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+    if (!dbPath || dbPath === "?") {
       u.pathname = "/test";
       return u.toString();
     }
@@ -53,6 +67,138 @@ function normalizeUri(uri: string): string {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ROLES
+// ─────────────────────────────────────────────────────────────────────────────
+const ROLE_NAMES = {
+  ADMIN: "Admin",
+  TECH: "Tech",
+  BASIC: "Basic",
+  DEFAULT: "Default",
+};
+
+function allPermissions() {
+  return RESOURCES.map((resource) => ({
+    resource: resource as string,
+    read: true,
+    create: true,
+    update: true,
+    delete: true,
+  }));
+}
+
+function techPermissions() {
+  const resources: Resource[] = [
+    "customers",
+    "vehicles",
+    "workorders",
+    "parts",
+    "services",
+    "alignments",
+    "alignmentTemplates",
+    "settings",
+  ];
+  return RESOURCES.map((resource) => ({
+    resource: resource as string,
+    read: resources.includes(resource),
+    create: resources.includes(resource),
+    update: resources.includes(resource),
+    delete: resources.includes(resource),
+  }));
+}
+
+function basicPermissions() {
+  const readOnly: Resource[] = [
+    "customers",
+    "vehicles",
+    "workorders",
+    "parts",
+    "services",
+    "alignments",
+    "alignmentTemplates",
+    "settings",
+  ];
+  return RESOURCES.map((resource) => ({
+    resource: resource as string,
+    read: readOnly.includes(resource),
+    create: false,
+    update: false,
+    delete: false,
+  }));
+}
+
+function noPermissions() {
+  return RESOURCES.map((resource) => ({
+    resource: resource as string,
+    read: false,
+    create: false,
+    update: false,
+    delete: false,
+  }));
+}
+
+async function seedRoles() {
+  console.log("Seeding roles...");
+  const admin = await Role.findOneAndUpdate(
+    { name: ROLE_NAMES.ADMIN },
+    { $set: { permissions: allPermissions() } },
+    { new: true, upsert: true }
+  );
+  const tech = await Role.findOneAndUpdate(
+    { name: ROLE_NAMES.TECH },
+    { $set: { permissions: techPermissions() } },
+    { new: true, upsert: true }
+  );
+  const basic = await Role.findOneAndUpdate(
+    { name: ROLE_NAMES.BASIC },
+    { $set: { permissions: basicPermissions() } },
+    { new: true, upsert: true }
+  );
+  const defaultRole = await Role.findOneAndUpdate(
+    { name: ROLE_NAMES.DEFAULT },
+    { $set: { permissions: noPermissions() } },
+    { new: true, upsert: true }
+  );
+  console.log(`  Roles: ${admin.name}, ${tech.name}, ${basic.name}, ${defaultRole.name}`);
+  return { admin, tech, basic, default: defaultRole };
+}
+
+const LEGACY_ROLE_TO_NAME: Record<string, string> = {
+  admin: ROLE_NAMES.ADMIN,
+  technician: ROLE_NAMES.TECH,
+  manager: ROLE_NAMES.TECH,
+};
+
+async function migrateUsers(roleIds: {
+  admin: mongoose.Types.ObjectId;
+  tech: mongoose.Types.ObjectId;
+  basic: mongoose.Types.ObjectId;
+}) {
+  console.log("Migrating legacy users (string role -> ObjectId)...");
+  const coll = mongoose.connection.collection("users");
+  const users = await coll.find({}).toArray();
+  let updated = 0;
+  for (const u of users) {
+    const r = u.role;
+    if (typeof r === "string") {
+      const roleName = LEGACY_ROLE_TO_NAME[r.toLowerCase()] ?? ROLE_NAMES.TECH;
+      const roleId =
+        roleName === ROLE_NAMES.ADMIN
+          ? roleIds.admin
+          : roleName === ROLE_NAMES.BASIC
+            ? roleIds.basic
+            : roleIds.tech;
+      await coll.updateOne({ _id: u._id }, { $set: { role: roleId } });
+      updated++;
+    }
+  }
+  console.log(`  Migrated ${updated} users.`);
+  return updated;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEED DATA
+// ─────────────────────────────────────────────────────────────────────────────
 const CUSTOMERS = [
   { firstName: "James", lastName: "Wilson", email: "james.wilson@email.com", phone: "555-101-0001", city: "Portland", state: "OR", zipCode: "97201" },
   { firstName: "Maria", lastName: "Garcia", email: "maria.garcia@email.com", phone: "555-102-0002", city: "Seattle", state: "WA", zipCode: "98101" },
@@ -132,11 +278,159 @@ const WORK_ORDER_DESCRIPTIONS = [
   "Multi-point inspection and oil change",
 ];
 
+const ALIGNMENT_TYPES = [
+  { name: "Street", description: "Standard street driving alignment" },
+  { name: "Performance", description: "Aggressive alignment for spirited driving" },
+  { name: "Track Day", description: "Race-oriented alignment settings" },
+  { name: "Comfort", description: "Comfort-focused alignment with reduced tire wear" },
+  { name: "Tow/Haul", description: "Alignment for towing or hauling loads" },
+];
+
+const RIDE_HEIGHT_REFERENCES = [
+  { name: "Fender Gap", description: "Measured from fender lip to wheel center" },
+  { name: "Factory Spec", description: "OEM factory ride height specification" },
+  { name: "Pinch Weld", description: "Measured from pinch weld to ground" },
+  { name: "Hub Center", description: "Measured from hub center to fender" },
+];
+
+const ALIGNMENT_TEMPLATES = [
+  {
+    make: "Toyota",
+    model: "Camry",
+    year: "2020-2024",
+    alignmentType: "Street",
+    target: {
+      fl: { camber: -0.5, toe: 0.05 },
+      fr: { camber: -0.5, toe: 0.05 },
+      rl: { camber: -1.0, toe: 0.10 },
+      rr: { camber: -1.0, toe: 0.10 },
+    },
+    notes: "Standard daily driver alignment. Slight negative camber for handling.",
+  },
+  {
+    make: "Honda",
+    model: "Accord",
+    year: "2018-2024",
+    alignmentType: "Street",
+    target: {
+      fl: { camber: -0.6, toe: 0.04 },
+      fr: { camber: -0.6, toe: 0.04 },
+      rl: { camber: -1.2, toe: 0.08 },
+      rr: { camber: -1.2, toe: 0.08 },
+    },
+    notes: "Honda factory recommendations with slight improvement for tire wear.",
+  },
+  {
+    make: "BMW",
+    model: "330i",
+    year: "2019-2024",
+    alignmentType: "Performance",
+    target: {
+      fl: { camber: -1.5, toe: 0.02 },
+      fr: { camber: -1.5, toe: 0.02 },
+      rl: { camber: -1.8, toe: 0.05 },
+      rr: { camber: -1.8, toe: 0.05 },
+    },
+    notes: "Sporty alignment for spirited driving. More aggressive camber.",
+  },
+  {
+    make: "Ford",
+    model: "F-150",
+    year: "2021-2024",
+    alignmentType: "Tow/Haul",
+    target: {
+      fl: { camber: -0.3, toe: 0.08 },
+      fr: { camber: -0.3, toe: 0.08 },
+      rl: { camber: -0.5, toe: 0.10 },
+      rr: { camber: -0.5, toe: 0.10 },
+    },
+    notes: "Towing-optimized alignment. Accounts for rear sag under load.",
+  },
+  {
+    make: "Subaru",
+    model: "Outback",
+    year: "2020-2024",
+    alignmentType: "Street",
+    target: {
+      fl: { camber: -0.7, toe: 0.06 },
+      fr: { camber: -0.7, toe: 0.06 },
+      rl: { camber: -1.0, toe: 0.08 },
+      rr: { camber: -1.0, toe: 0.08 },
+    },
+    notes: "AWD-optimized alignment. Balanced front/rear for all conditions.",
+  },
+  {
+    make: "Tesla",
+    model: "Model 3",
+    year: "2020-2024",
+    alignmentType: "Performance",
+    target: {
+      fl: { camber: -1.2, toe: 0.02 },
+      fr: { camber: -1.2, toe: 0.02 },
+      rl: { camber: -1.5, toe: 0.04 },
+      rr: { camber: -1.5, toe: 0.04 },
+    },
+    notes: "Performance-oriented alignment for instant torque handling.",
+  },
+  {
+    make: "Mazda",
+    model: "CX-5",
+    year: "2019-2024",
+    alignmentType: "Comfort",
+    target: {
+      fl: { camber: -0.4, toe: 0.06 },
+      fr: { camber: -0.4, toe: 0.06 },
+      rl: { camber: -0.8, toe: 0.08 },
+      rr: { camber: -0.8, toe: 0.08 },
+    },
+    notes: "Comfort-focused. Minimizes tire wear while maintaining handling.",
+  },
+  {
+    make: "Chevrolet",
+    model: "Silverado",
+    year: "2019-2024",
+    alignmentType: "Tow/Haul",
+    target: {
+      fl: { camber: -0.2, toe: 0.10 },
+      fr: { camber: -0.2, toe: 0.10 },
+      rl: { camber: -0.4, toe: 0.12 },
+      rr: { camber: -0.4, toe: 0.12 },
+    },
+    notes: "Heavy-duty towing alignment. Compensates for trailer tongue weight.",
+  },
+  {
+    make: "Porsche",
+    model: "911",
+    year: "2019-2024",
+    alignmentType: "Track Day",
+    target: {
+      fl: { camber: -2.5, toe: 0.00 },
+      fr: { camber: -2.5, toe: 0.00 },
+      rl: { camber: -2.2, toe: 0.02 },
+      rr: { camber: -2.2, toe: 0.02 },
+    },
+    notes: "Aggressive track alignment. Maximizes grip at the expense of tire wear.",
+  },
+  {
+    make: "Jeep",
+    model: "Wrangler",
+    year: "2018-2024",
+    alignmentType: "Street",
+    target: {
+      fl: { camber: 0.0, toe: 0.08 },
+      fr: { camber: 0.0, toe: 0.08 },
+      rl: { camber: 0.0, toe: 0.10 },
+      rr: { camber: 0.0, toe: 0.10 },
+    },
+    notes: "Off-road capable. Neutral camber for varied terrain handling.",
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN
+// ─────────────────────────────────────────────────────────────────────────────
 async function seed() {
-  // Prefer SEED_MONGODB_URI so you can target Atlas without changing .env.local
-  const uri =
-    process.env.SEED_MONGODB_URI ||
-    process.env.MONGODB_URI;
+  const uri = process.env.SEED_MONGODB_URI || process.env.MONGODB_URI;
   if (!uri) {
     console.error(
       "No MongoDB URI. Set MONGODB_URI in .env.local or run:\n  SEED_MONGODB_URI=\"mongodb+srv://user:pass@cluster.mongodb.net/dbname\" npm run seed"
@@ -144,8 +438,6 @@ async function seed() {
     process.exit(1);
   }
 
-  // Use same database as app: if URI has no db name, driver defaults to "test" — set it explicitly.
-  // Must set before connectDB() so lib/db reads it at connect time.
   const normalizedUri = normalizeUri(uri);
   process.env.MONGODB_URI = normalizedUri;
   console.log("Target:", redactUri(normalizedUri));
@@ -153,21 +445,58 @@ async function seed() {
   const dbName = mongoose.connection.db?.databaseName ?? "unknown";
   console.log("Connected to database:", dbName, "\n");
 
-  const clearFirst = process.argv.includes("--clear");
+  // Parse arguments - check CLI args and environment variables for cross-platform support
+  const args = process.argv.slice(2);
+  const argsStr = args.join(" ");
+  const clearFirst =
+    args.includes("--clear") ||
+    argsStr.includes("--clear") ||
+    process.env.SEED_CLEAR === "1" ||
+    process.env.SEED_CLEAR === "true";
+  const doMigrate = !(
+    args.includes("--no-migrate") ||
+    argsStr.includes("--no-migrate") ||
+    process.env.SEED_NO_MIGRATE === "1" ||
+    process.env.SEED_NO_MIGRATE === "true"
+  );
+
+  // Debug: show parsed args if --debug flag or env var is present
+  if (args.includes("--debug") || argsStr.includes("--debug") || process.env.SEED_DEBUG === "1") {
+    console.log("DEBUG process.argv:", process.argv);
+    console.log("DEBUG args:", args);
+    console.log("DEBUG env SEED_CLEAR:", process.env.SEED_CLEAR);
+    console.log("DEBUG env SEED_NO_MIGRATE:", process.env.SEED_NO_MIGRATE);
+    console.log("DEBUG clearFirst:", clearFirst, "doMigrate:", doMigrate);
+  }
+
   if (clearFirst) {
-    console.log("--clear: removing existing documents (workorders, vehicles, customers, parts, services)...");
-    const [wo, v, c, p, s] = await Promise.all([
+    console.log("--clear: removing existing documents...");
+    const [wo, v, c, p, s, al, at, st] = await Promise.all([
       WorkOrder.deleteMany({}),
       Vehicle.deleteMany({}),
       Customer.deleteMany({}),
       Part.deleteMany({}),
       Service.deleteMany({}),
+      Alignment.deleteMany({}),
+      AlignmentTemplate.deleteMany({}),
+      Setting.deleteMany({ category: { $in: ["alignmentType", "rideHeightReference"] } }),
     ]);
-    console.log(`  Deleted: ${wo.deletedCount} workorders, ${v.deletedCount} vehicles, ${c.deletedCount} customers, ${p.deletedCount} parts, ${s.deletedCount} services.\n`);
+    console.log(`  Deleted: ${wo.deletedCount} workorders, ${v.deletedCount} vehicles, ${c.deletedCount} customers, ${p.deletedCount} parts, ${s.deletedCount} services.`);
+    console.log(`  Deleted: ${al.deletedCount} alignments, ${at.deletedCount} alignment templates, ${st.deletedCount} settings.\n`);
   }
 
   try {
-    // Customers
+    // 1. Roles (always first - users depend on roles)
+    const { admin, tech, basic } = await seedRoles();
+
+    // 2. Migrate legacy users (optional)
+    if (doMigrate) {
+      await migrateUsers({ admin: admin._id, tech: tech._id, basic: basic._id });
+    } else {
+      console.log("Skipped user migration (--no-migrate)");
+    }
+
+    // 3. Customers
     console.log("Seeding customers...");
     const insertedCustomers = await Customer.insertMany(
       CUSTOMERS.map((c) => ({
@@ -180,7 +509,7 @@ async function seed() {
     );
     console.log(`  Inserted ${insertedCustomers.length} customers.`);
 
-    // Vehicles (assign to customers in order, wrap around)
+    // 4. Vehicles
     console.log("Seeding vehicles...");
     const vehicleDocs = MAKES_MODELS.map(([make, model], i) => ({
       customer: insertedCustomers[i % insertedCustomers.length]._id,
@@ -195,7 +524,7 @@ async function seed() {
     const insertedVehicles = await Vehicle.insertMany(vehicleDocs);
     console.log(`  Inserted ${insertedVehicles.length} vehicles.`);
 
-    // Parts
+    // 5. Parts
     console.log("Seeding parts...");
     const partDocs = PARTS.map((p) => ({
       partNumber: p.partNumber,
@@ -209,7 +538,7 @@ async function seed() {
     const insertedParts = await Part.insertMany(partDocs);
     console.log(`  Inserted ${insertedParts.length} parts.`);
 
-    // Services (totalCost is set by pre-save hook, so we use save())
+    // 6. Services
     console.log("Seeding services...");
     const insertedServices: { _id: mongoose.Types.ObjectId }[] = [];
     for (const s of SERVICES) {
@@ -226,7 +555,7 @@ async function seed() {
     }
     console.log(`  Inserted ${insertedServices.length} services.`);
 
-    // Work orders (use save so totalCost is computed by pre-save hook)
+    // 7. Work Orders
     console.log("Seeding work orders...");
     const statuses = ["scheduled", "in_progress", "completed", "completed", "completed"] as const;
     const workTypes = ["maintenance", "repair", "inspection", "diagnostic", "maintenance"] as const;
@@ -236,12 +565,25 @@ async function seed() {
       const daysAgo = 90 - i * 5;
       const workOrderDate = new Date();
       workOrderDate.setDate(workOrderDate.getDate() - daysAgo);
-      const partsUsed = i % 3 !== 0
-        ? [
-            { part: insertedParts[i % insertedParts.length]._id, quantity: 1, unitPrice: (insertedParts[i % insertedParts.length] as { sellingPrice: number }).sellingPrice },
-            ...(i % 2 === 0 ? [{ part: insertedParts[(i + 3) % insertedParts.length]._id, quantity: 2, unitPrice: (insertedParts[(i + 3) % insertedParts.length] as { sellingPrice: number }).sellingPrice }] : []),
-          ]
-        : [];
+      const partsUsed =
+        i % 3 !== 0
+          ? [
+              {
+                part: insertedParts[i % insertedParts.length]._id,
+                quantity: 1,
+                unitPrice: (insertedParts[i % insertedParts.length] as { sellingPrice: number }).sellingPrice,
+              },
+              ...(i % 2 === 0
+                ? [
+                    {
+                      part: insertedParts[(i + 3) % insertedParts.length]._id,
+                      quantity: 2,
+                      unitPrice: (insertedParts[(i + 3) % insertedParts.length] as { sellingPrice: number }).sellingPrice,
+                    },
+                  ]
+                : []),
+            ]
+          : [];
       const svc0 = insertedServices[i % insertedServices.length]._id;
       const svc1 = insertedServices[(i + 2) % insertedServices.length]._id;
       const price0 = SERVICES[i % SERVICES.length].standardHours * SERVICES[i % SERVICES.length].laborRate;
@@ -270,6 +612,196 @@ async function seed() {
       await wo.save();
     }
     console.log(`  Inserted 15 work orders.`);
+
+    // 8. Alignment Types (Settings)
+    console.log("Seeding alignment types...");
+    for (let i = 0; i < ALIGNMENT_TYPES.length; i++) {
+      await Setting.findOneAndUpdate(
+        { category: "alignmentType", name: ALIGNMENT_TYPES[i].name },
+        {
+          $set: {
+            category: "alignmentType",
+            name: ALIGNMENT_TYPES[i].name,
+            description: ALIGNMENT_TYPES[i].description,
+            sortOrder: i,
+          },
+        },
+        { upsert: true }
+      );
+    }
+    console.log(`  Inserted/updated ${ALIGNMENT_TYPES.length} alignment types.`);
+
+    // 9. Ride Height References (Settings)
+    console.log("Seeding ride height references...");
+    for (let i = 0; i < RIDE_HEIGHT_REFERENCES.length; i++) {
+      await Setting.findOneAndUpdate(
+        { category: "rideHeightReference", name: RIDE_HEIGHT_REFERENCES[i].name },
+        {
+          $set: {
+            category: "rideHeightReference",
+            name: RIDE_HEIGHT_REFERENCES[i].name,
+            description: RIDE_HEIGHT_REFERENCES[i].description,
+            sortOrder: i,
+          },
+        },
+        { upsert: true }
+      );
+    }
+    console.log(`  Inserted/updated ${RIDE_HEIGHT_REFERENCES.length} ride height references.`);
+
+    // 10. Alignment Templates
+    console.log("Seeding alignment templates...");
+    const insertedTemplates: mongoose.Document[] = [];
+    for (const t of ALIGNMENT_TEMPLATES) {
+      const doc = await AlignmentTemplate.create({
+        make: t.make,
+        model: t.model,
+        year: t.year,
+        alignmentType: t.alignmentType,
+        rideHeightReference: "Factory Spec",
+        target: t.target,
+        rideHeightUnit: "mm",
+        trackWidthUnit: "mm",
+        notes: t.notes,
+      });
+      insertedTemplates.push(doc);
+    }
+    console.log(`  Inserted ${insertedTemplates.length} alignment templates.`);
+
+    // 11. Alignments
+    console.log("Seeding alignments...");
+    const alignmentCount = 8;
+    for (let i = 0; i < alignmentCount; i++) {
+      const vehicle = insertedVehicles[i % insertedVehicles.length];
+      const template = insertedTemplates[i % insertedTemplates.length] as {
+        _id: mongoose.Types.ObjectId;
+        target: Record<string, unknown>;
+        alignmentType: string;
+      };
+
+      const before = {
+        fl: {
+          camber: (template.target.fl as { camber: number })?.camber + (Math.random() * 1.5 - 0.5),
+          toe: (template.target.fl as { toe: number })?.toe + (Math.random() * 0.15 - 0.05),
+          rideHeight: 340 + Math.round(Math.random() * 10),
+          weightPercent: 24 + Math.random() * 2,
+          weightLbs: 900 + Math.round(Math.random() * 50),
+        },
+        fr: {
+          camber: (template.target.fr as { camber: number })?.camber + (Math.random() * 1.5 - 0.5),
+          toe: (template.target.fr as { toe: number })?.toe + (Math.random() * 0.15 - 0.05),
+          rideHeight: 340 + Math.round(Math.random() * 10),
+          weightPercent: 24 + Math.random() * 2,
+          weightLbs: 900 + Math.round(Math.random() * 50),
+        },
+        rl: {
+          camber: (template.target.rl as { camber: number })?.camber + (Math.random() * 1.2 - 0.4),
+          toe: (template.target.rl as { toe: number })?.toe + (Math.random() * 0.12 - 0.04),
+          rideHeight: 350 + Math.round(Math.random() * 10),
+          weightPercent: 26 + Math.random() * 2,
+          weightLbs: 950 + Math.round(Math.random() * 50),
+        },
+        rr: {
+          camber: (template.target.rr as { camber: number })?.camber + (Math.random() * 1.2 - 0.4),
+          toe: (template.target.rr as { toe: number })?.toe + (Math.random() * 0.12 - 0.04),
+          rideHeight: 350 + Math.round(Math.random() * 10),
+          weightPercent: 26 + Math.random() * 2,
+          weightLbs: 950 + Math.round(Math.random() * 50),
+        },
+        frontAxlePercent: 48 + Math.random() * 4,
+        rearAxlePercent: 48 + Math.random() * 4,
+        leftSidePercent: 49 + Math.random() * 2,
+        rightSidePercent: 49 + Math.random() * 2,
+        crossFLRRPercent: 49 + Math.random() * 2,
+        crossFRRLPercent: 49 + Math.random() * 2,
+        totalWeightLbs: 3500 + Math.round(Math.random() * 500),
+        trackWidthFront: 1550 + Math.round(Math.random() * 20),
+        trackWidthRear: 1560 + Math.round(Math.random() * 20),
+      };
+
+      const after = {
+        fl: {
+          camber: (template.target.fl as { camber: number })?.camber + (Math.random() * 0.1 - 0.05),
+          toe: (template.target.fl as { toe: number })?.toe + (Math.random() * 0.02 - 0.01),
+          rideHeight: before.fl.rideHeight,
+          weightPercent: before.fl.weightPercent,
+          weightLbs: before.fl.weightLbs,
+        },
+        fr: {
+          camber: (template.target.fr as { camber: number })?.camber + (Math.random() * 0.1 - 0.05),
+          toe: (template.target.fr as { toe: number })?.toe + (Math.random() * 0.02 - 0.01),
+          rideHeight: before.fr.rideHeight,
+          weightPercent: before.fr.weightPercent,
+          weightLbs: before.fr.weightLbs,
+        },
+        rl: {
+          camber: (template.target.rl as { camber: number })?.camber + (Math.random() * 0.1 - 0.05),
+          toe: (template.target.rl as { toe: number })?.toe + (Math.random() * 0.02 - 0.01),
+          rideHeight: before.rl.rideHeight,
+          weightPercent: before.rl.weightPercent,
+          weightLbs: before.rl.weightLbs,
+        },
+        rr: {
+          camber: (template.target.rr as { camber: number })?.camber + (Math.random() * 0.1 - 0.05),
+          toe: (template.target.rr as { toe: number })?.toe + (Math.random() * 0.02 - 0.01),
+          rideHeight: before.rr.rideHeight,
+          weightPercent: before.rr.weightPercent,
+          weightLbs: before.rr.weightLbs,
+        },
+        frontAxlePercent: before.frontAxlePercent,
+        rearAxlePercent: before.rearAxlePercent,
+        leftSidePercent: before.leftSidePercent,
+        rightSidePercent: before.rightSidePercent,
+        crossFLRRPercent: before.crossFLRRPercent,
+        crossFRRLPercent: before.crossFRRLPercent,
+        totalWeightLbs: before.totalWeightLbs,
+        trackWidthFront: before.trackWidthFront,
+        trackWidthRear: before.trackWidthRear,
+      };
+
+      let workOrderId: mongoose.Types.ObjectId | undefined;
+      const alignmentWorkOrder = await WorkOrder.findOne({
+        vehicle: vehicle._id,
+        description: { $regex: /alignment/i },
+      }).lean();
+      if (alignmentWorkOrder) {
+        workOrderId = alignmentWorkOrder._id;
+      }
+
+      const daysAgo = 60 - i * 7;
+      const alignmentDate = new Date();
+      alignmentDate.setDate(alignmentDate.getDate() - daysAgo);
+
+      await Alignment.create({
+        vehicle: vehicle._id,
+        workOrder: workOrderId,
+        template: template._id,
+        alignmentType: template.alignmentType,
+        rideHeightReference: "Factory Spec",
+        before,
+        after,
+        intermediateSteps:
+          i % 3 === 0
+            ? [
+                {
+                  label: "After front camber adjustment",
+                  snapshot: {
+                    ...before,
+                    fl: { ...before.fl, camber: after.fl.camber },
+                    fr: { ...before.fr, camber: after.fr.camber },
+                  },
+                },
+              ]
+            : [],
+        customerNotes: i % 2 === 0 ? "Customer requested alignment check after hitting pothole" : undefined,
+        technicianNotes: `Alignment completed. ${i % 2 === 0 ? "Noticed slight wear on front tires." : "All components in good condition."}`,
+        accuracyRating: 4 + Math.round(Math.random()),
+        rideHeightUnit: "mm",
+        trackWidthUnit: "mm",
+        alignmentDate,
+      });
+    }
+    console.log(`  Inserted ${alignmentCount} alignments.`);
 
     console.log("\nSeed completed successfully.");
   } catch (err) {

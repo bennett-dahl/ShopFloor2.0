@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Setting from "@/models/Setting";
 
 export async function GET(request: NextRequest) {
@@ -24,8 +25,8 @@ export async function GET(request: NextRequest) {
       settings,
       total,
     });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/settings");
   }
 }
 
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const setting = await Setting.create(body);
     return NextResponse.json(setting, { status: 201 });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "POST /api/settings");
   }
 }

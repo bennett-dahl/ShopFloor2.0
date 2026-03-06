@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
+import { errorResponse } from "@/lib/api-error";
 import User from "@/models/User";
 import Role from "@/models/Role";
 import { sendEmail } from "@/lib/email";
@@ -58,10 +59,6 @@ This is an automated message from Throttle Therapy Shop.`;
     }
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("[POST /api/request-access]", err);
-    return NextResponse.json(
-      { message: "Server error" },
-      { status: 500 }
-    );
+    return errorResponse(err, "POST /api/request-access");
   }
 }

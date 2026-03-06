@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Service from "@/models/Service";
 import mongoose from "mongoose";
 
@@ -27,8 +28,8 @@ export async function GET(
       );
     }
     return NextResponse.json(service);
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/services/[id]");
   }
 }
 
@@ -67,7 +68,7 @@ export async function PUT(
         { status: 400 }
       );
     }
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "PUT /api/services/[id]");
   }
 }
 
@@ -94,7 +95,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json({ message: "Service deleted successfully" });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "DELETE /api/services/[id]");
   }
 }

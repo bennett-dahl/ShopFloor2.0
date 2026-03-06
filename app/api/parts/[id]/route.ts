@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Part from "@/models/Part";
 import mongoose from "mongoose";
 
@@ -27,8 +28,8 @@ export async function GET(
       );
     }
     return NextResponse.json(part);
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/parts/[id]");
   }
 }
 
@@ -67,7 +68,7 @@ export async function PUT(
         { status: 400 }
       );
     }
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "PUT /api/parts/[id]");
   }
 }
 
@@ -98,7 +99,7 @@ export async function DELETE(
       );
     }
     return NextResponse.json({ message: "Part deactivated successfully" });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "DELETE /api/parts/[id]");
   }
 }

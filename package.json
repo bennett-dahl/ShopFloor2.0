@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "seed": "tsx scripts/seed.ts",
-    "seed:roles": "tsx scripts/seed-roles.ts"
+    "seed:clear": "cross-env SEED_CLEAR=1 tsx scripts/seed.ts",
+    "seed:fresh": "cross-env SEED_CLEAR=1 SEED_NO_MIGRATE=1 tsx scripts/seed.ts"
   },
   "dependencies": {
     "mongoose": "^9.2.4",
@@ -26,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",

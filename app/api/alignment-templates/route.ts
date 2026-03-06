@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import AlignmentTemplate from "@/models/AlignmentTemplate";
 import User from "@/models/User";
 
@@ -32,8 +33,7 @@ export async function GET(request: NextRequest) {
       total,
     });
   } catch (err) {
-    console.error("[GET /api/alignment-templates]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "GET /api/alignment-templates");
   }
 }
 
@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(template, { status: 201 });
   } catch (err) {
-    console.error("[POST /api/alignment-templates]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "POST /api/alignment-templates");
   }
 }

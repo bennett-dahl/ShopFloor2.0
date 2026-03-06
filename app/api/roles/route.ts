@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Role from "@/models/Role";
 import { RESOURCES, type Resource } from "@/lib/permissions";
 
@@ -35,8 +36,7 @@ export async function GET() {
     const roles = await Role.find().sort({ name: 1 }).lean();
     return NextResponse.json({ roles });
   } catch (err) {
-    console.error("[GET /api/roles]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "GET /api/roles");
   }
 }
 
@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
     if (e.code === 11000) {
       return NextResponse.json({ message: "Role name already exists" }, { status: 400 });
     }
-    console.error("[POST /api/roles]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "POST /api/roles");
   }
 }

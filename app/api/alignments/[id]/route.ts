@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Alignment from "@/models/Alignment";
 import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
@@ -41,8 +42,8 @@ export async function GET(
       return NextResponse.json({ message: "Alignment not found" }, { status: 404 });
     }
     return NextResponse.json(alignment);
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "GET /api/alignments/[id]");
   }
 }
 
@@ -100,8 +101,7 @@ export async function PUT(
     }
     return NextResponse.json(alignment);
   } catch (err) {
-    console.error("[PUT /api/alignments]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "PUT /api/alignments/[id]");
   }
 }
 
@@ -122,7 +122,7 @@ export async function DELETE(
       return NextResponse.json({ message: "Alignment not found" }, { status: 404 });
     }
     return NextResponse.json({ message: "Alignment deleted" });
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "DELETE /api/alignments/[id]");
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import WorkOrder from "@/models/WorkOrder";
 import mongoose from "mongoose";
 
@@ -39,7 +40,7 @@ export async function PATCH(
       );
     }
     return NextResponse.json(workOrder);
-  } catch {
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+  } catch (err) {
+    return errorResponse(err, "PATCH /api/workorders/[id]/status");
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthSession } from "@/lib/auth";
 import connectDB from "@/lib/db";
+import { errorResponse } from "@/lib/api-error";
 import User from "@/models/User";
 import Role from "@/models/Role";
 import type { PermissionsMap, Resource } from "@/lib/permissions";
@@ -54,7 +55,6 @@ export async function GET() {
       permissions,
     });
   } catch (err) {
-    console.error("[GET /api/me]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "GET /api/me");
   }
 }

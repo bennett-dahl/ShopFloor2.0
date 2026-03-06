@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Invitation from "@/models/Invitation";
 import mongoose from "mongoose";
 
@@ -22,7 +23,6 @@ export async function DELETE(
     }
     return NextResponse.json({ message: "Invitation cancelled" });
   } catch (err) {
-    console.error("[DELETE /api/invitations/[id]]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "DELETE /api/invitations/[id]");
   }
 }

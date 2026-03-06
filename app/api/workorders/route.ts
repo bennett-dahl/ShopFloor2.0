@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import WorkOrder, { getNextWorkOrderNumber } from "@/models/WorkOrder";
 import Vehicle from "@/models/Vehicle";
 import Customer from "@/models/Customer";
@@ -71,8 +72,7 @@ export async function GET(request: NextRequest) {
       total,
     });
   } catch (err) {
-    console.error("[GET /api/workorders]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "GET /api/workorders");
   }
 }
 
@@ -110,7 +110,6 @@ export async function POST(request: NextRequest) {
     ]);
     return NextResponse.json(workOrder, { status: 201 });
   } catch (err) {
-    console.error("[POST /api/workorders]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "POST /api/workorders");
   }
 }

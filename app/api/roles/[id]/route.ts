@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Role from "@/models/Role";
 import User from "@/models/User";
 import { RESOURCES, type Resource } from "@/lib/permissions";
@@ -47,8 +48,7 @@ export async function GET(
     }
     return NextResponse.json(role);
   } catch (err) {
-    console.error("[GET /api/roles/[id]]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "GET /api/roles/[id]");
   }
 }
 
@@ -83,8 +83,7 @@ export async function PUT(
     if (e.code === 11000) {
       return NextResponse.json({ message: "Role name already exists" }, { status: 400 });
     }
-    console.error("[PUT /api/roles/[id]]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "PUT /api/roles/[id]");
   }
 }
 
@@ -123,7 +122,6 @@ export async function DELETE(
     await Role.findByIdAndDelete(id);
     return NextResponse.json({ message: "Role deleted" });
   } catch (err) {
-    console.error("[DELETE /api/roles/[id]]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "DELETE /api/roles/[id]");
   }
 }

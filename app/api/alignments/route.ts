@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
+import { errorResponse } from "@/lib/api-error";
 import Alignment from "@/models/Alignment";
 import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
@@ -54,8 +55,7 @@ export async function GET(request: NextRequest) {
       total,
     });
   } catch (err) {
-    console.error("[GET /api/alignments]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "GET /api/alignments");
   }
 }
 
@@ -89,7 +89,6 @@ export async function POST(request: NextRequest) {
     ]);
     return NextResponse.json(alignment, { status: 201 });
   } catch (err) {
-    console.error("[POST /api/alignments]", err);
-    return NextResponse.json({ message: "Server error" }, { status: 500 });
+    return errorResponse(err, "POST /api/alignments");
   }
 }
