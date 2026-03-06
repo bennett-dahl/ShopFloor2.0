@@ -9,10 +9,12 @@ const protectedPaths = [
   "/workorders",
   "/parts",
   "/services",
+  "/alignments",
+  "/settings",
 ];
 const guestPaths = ["/login"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
@@ -33,5 +35,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/customers/:path*", "/vehicles/:path*", "/workorders/:path*", "/parts/:path*", "/services/:path*", "/login"],
+  matcher: ["/dashboard/:path*", "/customers/:path*", "/vehicles/:path*", "/workorders/:path*", "/parts/:path*", "/services/:path*", "/alignments/:path*", "/settings/:path*", "/login"],
 };

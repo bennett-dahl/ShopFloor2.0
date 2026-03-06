@@ -3,6 +3,31 @@ import { getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import Role from "@/models/Role";
+import Invitation from "@/models/Invitation";
+import Setting from "@/models/Setting";
+
+async function getDefaultRoleId(): Promise<string> {
+  const setting = await Setting.findOne({
+    category: "app",
+    name: "defaultSignupRoleId",
+  })
+    .lean();
+  const configuredId = setting?.value?.trim();
+  if (configuredId) {
+    const role = await Role.findById(configuredId).lean();
+    if (role) return role._id.toString();
+  }
+  const role =
+    (await Role.findOne({ name: "Basic" }).lean()) ??
+    (await Role.findOne({ name: "Tech" }).lean()) ??
+    (await Role.findOne({ name: "Admin" }).lean()) ??
+    (await Role.findOne({ name: "Default" }).lean()) ??
+    (await Role.findOne().lean());
+  if (!role)
+    throw new Error("No roles in database. Run scripts/seed-roles.ts first.");
+  return role._id.toString();
+}
 
 export const authOptions = {
   trustHost: true,
@@ -28,24 +53,37 @@ export const authOptions = {
         if (user) {
           user.lastLogin = new Date();
           await user.save();
+          const roleId = user.role?.toString?.() ?? (user.role as unknown as string);
+          token.roleId = roleId;
         } else {
+          const emailLower = (email ?? "").trim().toLowerCase();
+          const invitation = emailLower
+            ? await Invitation.findOne({ email: emailLower })
+            : null;
+          const roleIdStr = invitation
+            ? invitation.role.toString()
+            : await getDefaultRoleId();
+          const { default: mongoose } = await import("mongoose");
           user = await User.create({
             googleId,
             email: email ?? "",
             name: name ?? "User",
             picture: picture ?? undefined,
-            role: "technician",
+            role: new mongoose.Types.ObjectId(roleIdStr),
           });
+          token.roleId = user.role.toString();
+          if (invitation) {
+            await Invitation.findByIdAndDelete(invitation._id);
+          }
         }
         token.userId = user._id.toString();
-        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as { id?: string }).id = token.userId as string;
-        (session.user as { role?: string }).role = token.role as string;
+        (session.user as { roleId?: string }).roleId = token.roleId as string;
       }
       return session;
     },
@@ -66,7 +104,7 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
-      role?: string;
+      roleId?: string;
     };
   }
 }
@@ -74,6 +112,6 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     userId?: string;
-    role?: string;
+    roleId?: string;
   }
 }

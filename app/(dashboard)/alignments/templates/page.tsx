@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { get } from "@/lib/api";
+import { useCan } from "@/components/MeProvider";
 
 type Template = {
   _id: string;
@@ -14,6 +15,7 @@ type Template = {
 };
 
 export default function AlignmentTemplatesPage() {
+  const can = useCan("alignmentTemplates");
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,12 +49,14 @@ export default function AlignmentTemplatesPage() {
             Alignment Templates
           </h1>
         </div>
+        {can.create && (
         <Link
           href="/alignments/templates/new"
           className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
         >
           ➕ New Template
         </Link>
+        )}
       </div>
 
       {loading ? (
@@ -69,32 +73,49 @@ export default function AlignmentTemplatesPage() {
           <p className="mt-1 text-zinc-600 dark:text-zinc-400">
             Create templates by make, model, year and alignment type for reuse.
           </p>
+          {can.create && (
           <Link
             href="/alignments/templates/new"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
           >
             ➕ New Template
           </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3 rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
           {templates.map((t) => (
-            <Link
-              key={t._id}
-              href={`/alignments/templates/${t._id}`}
-              className="flex items-center justify-between rounded-lg border border-zinc-200 py-3 px-4 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-700/50"
-            >
-              <div>
-                <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                  {t.make} {t.model} {t.year}
-                </p>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {t.alignmentType}
-                  {t.rideHeightReference ? ` · ${t.rideHeightReference}` : ""}
-                </p>
-              </div>
-              <span className="text-zinc-500">Edit</span>
-            </Link>
+            <Fragment key={t._id}>
+              {can.update ? (
+                <Link
+                  href={`/alignments/templates/${t._id}`}
+                  className="flex items-center justify-between rounded-lg border border-zinc-200 py-3 px-4 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-700/50"
+                >
+                  <div>
+                    <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                      {t.make} {t.model} {t.year}
+                    </p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {t.alignmentType}
+                      {t.rideHeightReference ? ` · ${t.rideHeightReference}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-zinc-500">Edit</span>
+                </Link>
+              ) : (
+                <div className="flex items-center justify-between rounded-lg border border-zinc-200 py-3 px-4 dark:border-zinc-700">
+                  <div>
+                    <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                      {t.make} {t.model} {t.year}
+                    </p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {t.alignmentType}
+                      {t.rideHeightReference ? ` · ${t.rideHeightReference}` : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </Fragment>
           ))}
         </div>
       )}

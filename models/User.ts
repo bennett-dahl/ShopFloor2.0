@@ -6,7 +6,7 @@ export interface IUser {
   email: string;
   name: string;
   picture?: string;
-  role: "admin" | "technician" | "manager";
+  role: mongoose.Types.ObjectId;
   isActive: boolean;
   createdAt: Date;
   lastLogin: Date;
@@ -18,11 +18,7 @@ const userSchema = new Schema<IUser>(
     email: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     picture: { type: String },
-    role: {
-      type: String,
-      enum: ["admin", "technician", "manager"],
-      default: "technician",
-    },
+    role: { type: Schema.Types.ObjectId, ref: "Role", required: true },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
     lastLogin: { type: Date, default: Date.now },

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermissionForMethod } from "@/lib/api-auth";
 import Part from "@/models/Part";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("parts", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     await connectDB();
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("parts", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     await connectDB();

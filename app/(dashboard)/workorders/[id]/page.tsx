@@ -7,6 +7,7 @@ import { get, post, put, del } from "@/lib/api";
 import VehicleModal from "@/components/entity-modals/VehicleModal";
 import PartModal from "@/components/entity-modals/PartModal";
 import ServiceModal from "@/components/entity-modals/ServiceModal";
+import { useCan } from "@/components/MeProvider";
 
 const WORK_TYPES = ["maintenance", "repair", "modification", "inspection", "diagnostic", "other"];
 const STATUSES = ["scheduled", "in_progress", "completed", "cancelled"];
@@ -86,6 +87,8 @@ export default function WorkOrderDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const isNew = id === "new";
+  const can = useCan("workorders");
+  const canEdit = isNew ? can.create : can.update;
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -335,7 +338,7 @@ export default function WorkOrderDetailPage() {
               Advanced Alignment
             </Link>
           )}
-          {!isNew && (
+          {!isNew && can.delete && (
             <button
               type="button"
               onClick={deleteWorkOrder}
@@ -349,7 +352,7 @@ export default function WorkOrderDetailPage() {
       </div>
 
       <form onSubmit={save} className="space-y-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-800">
-        {!isNew && (
+        {!isNew && can.update && (
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-600 dark:bg-zinc-800/50">
             <button
               type="button"
@@ -382,7 +385,7 @@ export default function WorkOrderDetailPage() {
             required
             value={form.customer}
             onChange={(e) => onCustomerChange(e.target.value)}
-            disabled={!canChangeCustomerVehicle}
+            disabled={!canChangeCustomerVehicle || !canEdit}
             className={`${selectClass} disabled:opacity-60 disabled:cursor-not-allowed`}
           >
             <option value="">Select customer</option>
@@ -401,7 +404,7 @@ export default function WorkOrderDetailPage() {
               required
               value={form.vehicle}
               onChange={(e) => onVehicleChange(e.target.value)}
-              disabled={!form.customer || !canChangeCustomerVehicle}
+              disabled={!form.customer || !canChangeCustomerVehicle || !canEdit}
               className={`min-w-0 flex-1 ${selectClass} disabled:opacity-60 disabled:cursor-not-allowed`}
             >
               <option value="">
@@ -413,6 +416,7 @@ export default function WorkOrderDetailPage() {
                 </option>
               ))}
             </select>
+            {can.update && (
             <button
               type="button"
               onClick={() => setAddVehicleModalOpen(true)}
@@ -422,12 +426,13 @@ export default function WorkOrderDetailPage() {
             >
               + New
             </button>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Work Type *</label>
-            <select value={form.workType} onChange={(e) => setForm({ ...form, workType: e.target.value })} className={selectClass}>
+            <select value={form.workType} onChange={(e) => setForm({ ...form, workType: e.target.value })} disabled={!canEdit} className={`${selectClass} disabled:opacity-60 disabled:cursor-not-allowed`}>
               {WORK_TYPES.map((w) => (
                 <option key={w} value={w}>{w}</option>
               ))}
@@ -435,7 +440,7 @@ export default function WorkOrderDetailPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Status *</label>
-            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={selectClass}>
+            <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} disabled={!canEdit} className={`${selectClass} disabled:opacity-60 disabled:cursor-not-allowed`}>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>{s.replace("_", " ")}</option>
               ))}
@@ -444,16 +449,16 @@ export default function WorkOrderDetailPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Description *</label>
-          <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={inputClass} />
+          <textarea required value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} disabled={!canEdit} className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Date *</label>
-            <input required type="date" value={form.workOrderDate} onChange={(e) => setForm({ ...form, workOrderDate: e.target.value })} className={inputClass} />
+            <input required type="date" value={form.workOrderDate} onChange={(e) => setForm({ ...form, workOrderDate: e.target.value })} disabled={!canEdit} className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`} />
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Mileage *</label>
-            <input required type="number" value={form.mileageAtService || ""} onChange={(e) => setForm({ ...form, mileageAtService: Number(e.target.value) || 0 })} className={inputClass} />
+            <input required type="number" value={form.mileageAtService || ""} onChange={(e) => setForm({ ...form, mileageAtService: Number(e.target.value) || 0 })} disabled={!canEdit} className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`} />
           </div>
         </div>
 
@@ -463,29 +468,35 @@ export default function WorkOrderDetailPage() {
             {form.servicesUsed.map((s, i) => (
               <div key={i} className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-600 dark:bg-zinc-800/50">
                 <div className="flex gap-2">
-                  <select value={s.service} onChange={(e) => onServiceSelect(i, e.target.value)} className={`min-w-0 flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100`}>
+                  <select value={s.service} onChange={(e) => onServiceSelect(i, e.target.value)} disabled={!canEdit} className={`min-w-0 flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed`}>
                     <option value="">Select service</option>
                     {services.map((sv) => (
                       <option key={sv._id} value={sv._id}>{sv.name} - ${sv.totalCost}</option>
                     ))}
                   </select>
-                  <button type="button" onClick={() => setAddServiceModalForRow(i)} className="shrink-0 rounded border border-dashed border-zinc-400 px-2 py-2 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-500 dark:text-zinc-400 dark:hover:bg-zinc-700" title="Add new service">+ New</button>
-                  <button type="button" onClick={() => removeService(i)} className="shrink-0 rounded bg-red-100 px-2 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300" aria-label="Remove">✕</button>
+                  {can.update && (
+                    <>
+                      <button type="button" onClick={() => setAddServiceModalForRow(i)} className="shrink-0 rounded border border-dashed border-zinc-400 px-2 py-2 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-500 dark:text-zinc-400 dark:hover:bg-zinc-700" title="Add new service">+ New</button>
+                      <button type="button" onClick={() => removeService(i)} className="shrink-0 rounded bg-red-100 px-2 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300" aria-label="Remove">✕</button>
+                    </>
+                  )}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-0.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Qty</label>
-                    <input type="number" min={1} value={s.quantity} onChange={(e) => setForm((f) => { const next = [...f.servicesUsed]; next[i] = { ...next[i], quantity: Number(e.target.value) || 1 }; return { ...f, servicesUsed: next }; })} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100" />
+                    <input type="number" min={1} value={s.quantity} onChange={(e) => setForm((f) => { const next = [...f.servicesUsed]; next[i] = { ...next[i], quantity: Number(e.target.value) || 1 }; return { ...f, servicesUsed: next }; })} disabled={!canEdit} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed" />
                   </div>
                   <div>
                     <label className="mb-0.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Unit price</label>
-                    <input type="number" step="0.01" value={s.unitPrice} onChange={(e) => setForm((f) => { const next = [...f.servicesUsed]; next[i] = { ...next[i], unitPrice: Number(e.target.value) || 0 }; return { ...f, servicesUsed: next }; })} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100" />
+                    <input type="number" step="0.01" value={s.unitPrice} onChange={(e) => setForm((f) => { const next = [...f.servicesUsed]; next[i] = { ...next[i], unitPrice: Number(e.target.value) || 0 }; return { ...f, servicesUsed: next }; })} disabled={!canEdit} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          {can.update && (
           <button type="button" onClick={addService} className="mt-2 w-full rounded-lg border-2 border-dashed border-zinc-300 py-2.5 text-sm font-medium text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-800/50" style={{ minHeight: 44 }}>+ Add Service</button>
+          )}
         </div>
 
         <div>
@@ -494,29 +505,35 @@ export default function WorkOrderDetailPage() {
             {form.partsUsed.map((p, i) => (
               <div key={i} className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-600 dark:bg-zinc-800/50">
                 <div className="flex gap-2">
-                  <select value={p.part} onChange={(e) => onPartSelect(i, e.target.value)} className={`min-w-0 flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100`}>
+                  <select value={p.part} onChange={(e) => onPartSelect(i, e.target.value)} disabled={!canEdit} className={`min-w-0 flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed`}>
                     <option value="">Select part</option>
                     {parts.map((pt) => (
                       <option key={pt._id} value={pt._id}>{pt.name} - ${pt.sellingPrice}</option>
                     ))}
                   </select>
-                  <button type="button" onClick={() => setAddPartModalForRow(i)} className="shrink-0 rounded border border-dashed border-zinc-400 px-2 py-2 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-500 dark:text-zinc-400 dark:hover:bg-zinc-700" title="Add new part">+ New</button>
-                  <button type="button" onClick={() => removePart(i)} className="shrink-0 rounded bg-red-100 px-2 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300" aria-label="Remove">✕</button>
+                  {can.update && (
+                    <>
+                      <button type="button" onClick={() => setAddPartModalForRow(i)} className="shrink-0 rounded border border-dashed border-zinc-400 px-2 py-2 text-xs text-zinc-600 hover:bg-zinc-100 dark:border-zinc-500 dark:text-zinc-400 dark:hover:bg-zinc-700" title="Add new part">+ New</button>
+                      <button type="button" onClick={() => removePart(i)} className="shrink-0 rounded bg-red-100 px-2 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300" aria-label="Remove">✕</button>
+                    </>
+                  )}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-0.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Qty</label>
-                    <input type="number" min={1} value={p.quantity} onChange={(e) => setForm((f) => { const next = [...f.partsUsed]; next[i] = { ...next[i], quantity: Number(e.target.value) || 1 }; return { ...f, partsUsed: next }; })} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100" />
+                    <input type="number" min={1} value={p.quantity} onChange={(e) => setForm((f) => { const next = [...f.partsUsed]; next[i] = { ...next[i], quantity: Number(e.target.value) || 1 }; return { ...f, partsUsed: next }; })} disabled={!canEdit} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed" />
                   </div>
                   <div>
                     <label className="mb-0.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Unit price</label>
-                    <input type="number" step="0.01" value={p.unitPrice} onChange={(e) => setForm((f) => { const next = [...f.partsUsed]; next[i] = { ...next[i], unitPrice: Number(e.target.value) || 0 }; return { ...f, partsUsed: next }; })} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100" />
+                    <input type="number" step="0.01" value={p.unitPrice} onChange={(e) => setForm((f) => { const next = [...f.partsUsed]; next[i] = { ...next[i], unitPrice: Number(e.target.value) || 0 }; return { ...f, partsUsed: next }; })} disabled={!canEdit} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          {can.update && (
           <button type="button" onClick={addPart} className="mt-2 w-full rounded-lg border-2 border-dashed border-zinc-300 py-2.5 text-sm font-medium text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-800/50" style={{ minHeight: 44 }}>+ Add Part</button>
+          )}
         </div>
 
         <div>
@@ -525,33 +542,37 @@ export default function WorkOrderDetailPage() {
             {form.otherWork.map((o, i) => (
               <div key={i} className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-600 dark:bg-zinc-800/50">
                 <div className="flex gap-2">
-                  <input type="text" placeholder="Description" value={o.description} onChange={(e) => setForm((f) => { const next = [...f.otherWork]; next[i] = { ...next[i], description: e.target.value }; return { ...f, otherWork: next }; })} className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:placeholder:text-zinc-400" />
-                  <button type="button" onClick={() => removeOtherWork(i)} className="shrink-0 rounded bg-red-100 px-2 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300" aria-label="Remove">✕</button>
+                  <input type="text" placeholder="Description" value={o.description} onChange={(e) => setForm((f) => { const next = [...f.otherWork]; next[i] = { ...next[i], description: e.target.value }; return { ...f, otherWork: next }; })} disabled={!canEdit} className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 dark:placeholder:text-zinc-400 disabled:opacity-60 disabled:cursor-not-allowed" />
+                  {can.update && (
+                    <button type="button" onClick={() => removeOtherWork(i)} className="shrink-0 rounded bg-red-100 px-2 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300" aria-label="Remove">✕</button>
+                  )}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-0.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Qty</label>
-                    <input type="number" min={1} value={o.quantity} onChange={(e) => setForm((f) => { const next = [...f.otherWork]; next[i] = { ...next[i], quantity: Number(e.target.value) || 1 }; return { ...f, otherWork: next }; })} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100" />
+                    <input type="number" min={1} value={o.quantity} onChange={(e) => setForm((f) => { const next = [...f.otherWork]; next[i] = { ...next[i], quantity: Number(e.target.value) || 1 }; return { ...f, otherWork: next }; })} disabled={!canEdit} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed" />
                   </div>
                   <div>
                     <label className="mb-0.5 block text-xs font-medium text-zinc-500 dark:text-zinc-400">Unit price</label>
-                    <input type="number" step="0.01" value={o.unitPrice} onChange={(e) => setForm((f) => { const next = [...f.otherWork]; next[i] = { ...next[i], unitPrice: Number(e.target.value) || 0 }; return { ...f, otherWork: next }; })} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100" />
+                    <input type="number" step="0.01" value={o.unitPrice} onChange={(e) => setForm((f) => { const next = [...f.otherWork]; next[i] = { ...next[i], unitPrice: Number(e.target.value) || 0 }; return { ...f, otherWork: next }; })} disabled={!canEdit} className="w-full rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100 disabled:opacity-60 disabled:cursor-not-allowed" />
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          {can.update && (
           <button type="button" onClick={addOtherWork} className="mt-2 w-full rounded-lg border-2 border-dashed border-zinc-300 py-2.5 text-sm font-medium text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:bg-zinc-800/50" style={{ minHeight: 44 }}>+ Add Other Work</button>
+          )}
         </div>
 
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Labor Hours</label>
-            <input type="number" step="0.5" value={form.laborHours || ""} onChange={(e) => setForm({ ...form, laborHours: Number(e.target.value) || 0 })} className={inputClass} />
+            <input type="number" step="0.5" value={form.laborHours || ""} onChange={(e) => setForm({ ...form, laborHours: Number(e.target.value) || 0 })} disabled={!canEdit} className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`} />
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Labor Rate</label>
-            <input type="number" step="0.01" value={form.laborRate || ""} onChange={(e) => setForm({ ...form, laborRate: Number(e.target.value) || 0 })} className={inputClass} />
+            <input type="number" step="0.01" value={form.laborRate || ""} onChange={(e) => setForm({ ...form, laborRate: Number(e.target.value) || 0 })} disabled={!canEdit} className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`} />
           </div>
           <div>
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Total (calc)</label>
@@ -560,16 +581,18 @@ export default function WorkOrderDetailPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Notes</label>
-          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className={inputClass} />
+          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} disabled={!canEdit} className={`${inputClass} disabled:opacity-60 disabled:cursor-not-allowed`} />
         </div>
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
           <Link href="/workorders" className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700">
             Cancel
           </Link>
+          {canEdit && (
           <button type="submit" disabled={saving} className="rounded-lg bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-70">
             {saving ? "Saving..." : isNew ? "Create Work Order" : "Update"}
           </button>
+          )}
         </div>
       </form>
 

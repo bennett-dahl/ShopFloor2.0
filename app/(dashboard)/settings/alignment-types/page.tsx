@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { get, post, put, del } from "@/lib/api";
+import { useCan } from "@/components/MeProvider";
 
 const CATEGORY = "alignmentType";
 
 type Setting = { _id: string; category: string; name: string; description?: string; sortOrder?: number };
 
 export default function AlignmentTypesPage() {
+  const can = useCan("settings");
   const [items, setItems] = useState<Setting[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -85,6 +87,7 @@ export default function AlignmentTypesPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Alignment Types
         </h1>
+        {can.create && (
         <button
           type="button"
           onClick={openAdd}
@@ -92,6 +95,7 @@ export default function AlignmentTypesPage() {
         >
           ➕ Add Type
         </button>
+        )}
       </div>
 
       {loading ? (
@@ -108,6 +112,7 @@ export default function AlignmentTypesPage() {
           <p className="mt-1 text-zinc-600 dark:text-zinc-400">
             Add types like Aggressive, Neutral, Custom for advanced alignments.
           </p>
+          {can.create && (
           <button
             type="button"
             onClick={openAdd}
@@ -115,6 +120,7 @@ export default function AlignmentTypesPage() {
           >
             ➕ Add Type
           </button>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
@@ -135,6 +141,7 @@ export default function AlignmentTypesPage() {
                   )}
                 </div>
                 <div className="flex gap-2">
+                  {can.update && (
                   <button
                     type="button"
                     onClick={() => openEdit(s)}
@@ -142,6 +149,8 @@ export default function AlignmentTypesPage() {
                   >
                     Edit
                   </button>
+                  )}
+                  {can.delete && (
                   <button
                     type="button"
                     onClick={() => deleteItem(s)}
@@ -149,6 +158,7 @@ export default function AlignmentTypesPage() {
                   >
                     Delete
                   </button>
+                  )}
                 </div>
               </li>
             ))}

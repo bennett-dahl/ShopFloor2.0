@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermissionForMethod } from "@/lib/api-auth";
 import Alignment from "@/models/Alignment";
 import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
@@ -8,7 +8,7 @@ import AlignmentTemplate from "@/models/AlignmentTemplate";
 import User from "@/models/User";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignments", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     await connectDB();
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignments", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     await connectDB();

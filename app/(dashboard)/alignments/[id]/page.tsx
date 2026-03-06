@@ -6,6 +6,7 @@ import Link from "next/link";
 import { get, post, put } from "@/lib/api";
 import AlignmentSnapshotForm from "@/components/AlignmentSnapshotForm";
 import type { IAlignmentSnapshot } from "@/models/AlignmentSnapshot";
+import { useCan } from "@/components/MeProvider";
 
 type Vehicle = { _id: string; make: string; model: string; year: number; customer?: { _id: string } };
 type WorkOrder = {
@@ -47,6 +48,9 @@ function AlignmentDetailInner() {
   const isNew = id === "new";
   const vehicleIdParam = searchParams.get("vehicleId") ?? "";
   const workOrderIdParam = searchParams.get("workOrderId") ?? "";
+  const canAlignments = useCan("alignments");
+  const canTemplates = useCan("alignmentTemplates");
+  const canEditAlignment = isNew ? canAlignments.create : canAlignments.update;
 
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
@@ -313,6 +317,7 @@ function AlignmentDetailInner() {
             {isNew ? "New Alignment" : "Edit Alignment"}
           </h1>
         </div>
+        {canTemplates.create && (
         <button
           type="button"
           onClick={() => {
@@ -329,6 +334,7 @@ function AlignmentDetailInner() {
         >
           Save as template
         </button>
+        )}
       </div>
 
       {saveAsTemplateOpen && (
@@ -594,6 +600,7 @@ function AlignmentDetailInner() {
                     placeholder="Step label (e.g. After ride height)"
                     className="max-w-xs rounded border border-zinc-300 bg-white px-3 py-2 text-zinc-900 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100"
                   />
+                  {canEditAlignment && (
                   <button
                     type="button"
                     onClick={() => removeIntermediateStep(i)}
@@ -601,6 +608,7 @@ function AlignmentDetailInner() {
                   >
                     Remove
                   </button>
+                  )}
                 </div>
                 <AlignmentSnapshotForm
                   value={step.snapshot}
@@ -618,6 +626,7 @@ function AlignmentDetailInner() {
             ))}
           </div>
         )}
+        {canEditAlignment && (
         <button
           type="button"
           onClick={addIntermediateStep}
@@ -625,6 +634,7 @@ function AlignmentDetailInner() {
         >
           + Add intermediate step
         </button>
+        )}
 
         <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-800">
           <AlignmentSnapshotForm
@@ -699,6 +709,7 @@ function AlignmentDetailInner() {
               Saved at {lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
             </span>
           )}
+          {canEditAlignment && (
           <button
             type="button"
             disabled={saving}
@@ -711,6 +722,7 @@ function AlignmentDetailInner() {
           >
             Save and Close
           </button>
+          )}
         </div>
       </form>
     </div>

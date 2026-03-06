@@ -6,6 +6,7 @@ import Link from "next/link";
 import { get, post, put } from "@/lib/api";
 import AlignmentSnapshotForm from "@/components/AlignmentSnapshotForm";
 import type { IAlignmentSnapshot } from "@/models/AlignmentSnapshot";
+import { useCan } from "@/components/MeProvider";
 
 type Template = {
   _id: string;
@@ -26,6 +27,8 @@ export default function AlignmentTemplateDetailPage() {
   const router = useRouter();
   const id = params.id as string;
   const isNew = id === "new";
+  const can = useCan("alignmentTemplates");
+  const canEdit = isNew ? can.create : can.update;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -266,6 +269,7 @@ export default function AlignmentTemplateDetailPage() {
           >
             Cancel
           </Link>
+          {canEdit && (
           <button
             type="submit"
             disabled={saving}
@@ -273,6 +277,7 @@ export default function AlignmentTemplateDetailPage() {
           >
             {saving ? "Saving..." : isNew ? "Create Template" : "Update"}
           </button>
+          )}
         </div>
       </form>
     </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { get } from "@/lib/api";
+import { useCan } from "@/components/MeProvider";
 
 const STATUSES = ["scheduled", "in_progress", "completed", "cancelled"];
 
@@ -58,6 +59,7 @@ function workOrderTotal(wo: WorkOrder): number {
 }
 
 export default function WorkOrdersPage() {
+  const can = useCan("workorders");
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -92,12 +94,14 @@ export default function WorkOrdersPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Work Orders
         </h1>
-        <Link
-          href="/workorders/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-        >
-          ➕ New Work Order
-        </Link>
+        {can.create && (
+          <Link
+            href="/workorders/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+          >
+            ➕ New Work Order
+          </Link>
+        )}
       </div>
       <div className="mb-6 flex flex-wrap gap-4">
         <input
@@ -132,12 +136,14 @@ export default function WorkOrdersPage() {
           <h3 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             No work orders found
           </h3>
-          <Link
-            href="/workorders/new"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-          >
-            ➕ New Work Order
-          </Link>
+          {can.create && (
+            <Link
+              href="/workorders/new"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+            >
+              ➕ New Work Order
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

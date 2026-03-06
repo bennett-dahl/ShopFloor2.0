@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermissionForMethod } from "@/lib/api-auth";
 import AlignmentTemplate from "@/models/AlignmentTemplate";
 import mongoose from "mongoose";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignmentTemplates", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     const { id } = await params;
@@ -30,7 +30,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignmentTemplates", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     const { id } = await params;
@@ -53,10 +53,10 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignmentTemplates", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     const { id } = await params;

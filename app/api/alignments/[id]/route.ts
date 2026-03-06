@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermissionForMethod } from "@/lib/api-auth";
 import Alignment from "@/models/Alignment";
 import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
@@ -9,10 +9,10 @@ import User from "@/models/User";
 import mongoose from "mongoose";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignments", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     const { id } = await params;
@@ -50,7 +50,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignments", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     const { id } = await params;
@@ -90,10 +90,10 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("alignments", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     const { id } = await params;

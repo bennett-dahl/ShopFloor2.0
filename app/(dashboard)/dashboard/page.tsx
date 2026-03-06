@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { get } from "@/lib/api";
+import { get, post } from "@/lib/api";
+import { useCan, useHasAnyRead, useMe } from "@/components/MeProvider";
 
 type Stats = {
   customers: number;
@@ -35,6 +36,11 @@ type AlignmentItem = {
 
 export default function DashboardPage() {
   const { data: session } = useSession();
+  const { loading: meLoading } = useMe();
+  const hasAnyRead = useHasAnyRead();
+  const canCustomers = useCan("customers");
+  const canVehicles = useCan("vehicles");
+  const canWorkOrders = useCan("workorders");
   const [stats, setStats] = useState<Stats>({
     customers: 0,
     vehicles: 0,
@@ -44,8 +50,15 @@ export default function DashboardPage() {
   const [recentWorkOrders, setRecentWorkOrders] = useState<WorkOrderItem[]>([]);
   const [recentAlignments, setRecentAlignments] = useState<AlignmentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [requestAccessSending, setRequestAccessSending] = useState(false);
+  const [requestAccessSent, setRequestAccessSent] = useState(false);
+  const [requestAccessError, setRequestAccessError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hasAnyRead) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     async function load() {
       try {
@@ -86,7 +99,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hasAnyRead]);
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", {
@@ -94,6 +107,67 @@ export default function DashboardPage() {
       month: "short",
       day: "numeric",
     });
+
+  const userName = session?.user?.name ?? "User";
+
+  const handleRequestAccess = async () => {
+    setRequestAccessSending(true);
+    setRequestAccessError(null);
+    try {
+      await post("/request-access", {});
+      setRequestAccessSent(true);
+    } catch (err) {
+      setRequestAccessError(
+        err instanceof Error ? err.message : "Failed to send request"
+      );
+    } finally {
+      setRequestAccessSending(false);
+    }
+  };
+
+  if (!meLoading && !hasAnyRead) {
+    return (
+      <div className="w-full px-4 py-6 sm:px-6 sm:py-8 md:mx-auto md:max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-zinc-700 dark:text-zinc-400">
+            Welcome, {userName}.
+          </p>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-8 text-center dark:border-amber-800/50 dark:bg-amber-950/20">
+          <p className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
+            You&apos;ve signed up, but you don&apos;t have access yet.
+          </p>
+          <p className="mt-2 text-zinc-700 dark:text-zinc-400">
+            Contact an admin to request access. Click the button below to send
+            them a notification email.
+          </p>
+          {requestAccessSent ? (
+            <p className="mt-6 text-green-700 dark:text-green-300 font-medium">
+              Request sent. An admin will be notified and can adjust your role
+              in Settings → Users.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleRequestAccess}
+              disabled={requestAccessSending}
+              className="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-70"
+            >
+              {requestAccessSending ? "Sending…" : "Request access from admin"}
+            </button>
+          )}
+          {requestAccessError && (
+            <p className="mt-3 text-sm text-red-600 dark:text-red-400">
+              {requestAccessError}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full px-4 py-6 sm:px-6 sm:py-8 md:mx-auto md:max-w-6xl">
@@ -297,6 +371,7 @@ export default function DashboardPage() {
           Quick Actions
         </h2>
         <div className="grid gap-3 sm:grid-cols-3">
+          {canCustomers.create && (
           <Link
             href="/customers"
             className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
@@ -306,6 +381,8 @@ export default function DashboardPage() {
               New Customer
             </span>
           </Link>
+          )}
+          {canVehicles.create && (
           <Link
             href="/vehicles"
             className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
@@ -315,6 +392,8 @@ export default function DashboardPage() {
               Add Vehicle
             </span>
           </Link>
+          )}
+          {canWorkOrders.create && (
           <Link
             href="/workorders"
             className="flex items-center gap-3 rounded-lg border-2 border-zinc-200 bg-zinc-50 py-4 px-4 transition-colors hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
@@ -324,6 +403,7 @@ export default function DashboardPage() {
               New Work Order
             </span>
           </Link>
+          )}
         </div>
       </div>
     </div>

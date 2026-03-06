@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { get } from "@/lib/api";
 import PartModal, { type Part } from "@/components/entity-modals/PartModal";
+import { useCan } from "@/components/MeProvider";
 
 export default function SettingsPartsPage() {
+  const can = useCan("parts");
   const [parts, setParts] = useState<Part[]>([]);
   const [search, setSearch] = useState("");
   const [showDeactivated, setShowDeactivated] = useState(false);
@@ -53,6 +55,7 @@ export default function SettingsPartsPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Parts
         </h1>
+        {can.create && (
         <button
           type="button"
           onClick={openAdd}
@@ -60,6 +63,7 @@ export default function SettingsPartsPage() {
         >
           ➕ Add Part
         </button>
+        )}
       </div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
         <input
@@ -100,6 +104,7 @@ export default function SettingsPartsPage() {
           <h3 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             No parts found
           </h3>
+          {can.create && (
           <button
             type="button"
             onClick={openAdd}
@@ -107,6 +112,7 @@ export default function SettingsPartsPage() {
           >
             ➕ Add Part
           </button>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
@@ -157,6 +163,7 @@ export default function SettingsPartsPage() {
                     ${(p.sellingPrice ?? 0).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-right">
+                    {can.update && (
                     <button
                       type="button"
                       onClick={() => openEdit(p)}
@@ -164,6 +171,7 @@ export default function SettingsPartsPage() {
                     >
                       Edit
                     </button>
+                    )}
                   </td>
                 </tr>
               ))}

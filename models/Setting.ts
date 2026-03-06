@@ -6,6 +6,7 @@ export interface ISetting {
   name: string;
   description?: string;
   sortOrder?: number;
+  value?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -16,6 +17,7 @@ const settingSchema = new Schema<ISetting>(
     name: { type: String, required: true },
     description: String,
     sortOrder: Number,
+    value: String,
   },
   { timestamps: true }
 );

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermissionForMethod } from "@/lib/api-auth";
 import WorkOrder from "@/models/WorkOrder";
 import mongoose from "mongoose";
 
@@ -8,7 +8,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("workorders", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     const { id } = await params;

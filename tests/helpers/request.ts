@@ -71,6 +71,23 @@ export async function patch(
   return { status: res.status, data };
 }
 
+/** PATCH request to a path without an id segment (e.g. /api/settings/default-signup-role). */
+export async function patchPath(
+  handler: (req: Request) => Promise<Response>,
+  path: string,
+  body: unknown
+): Promise<{ status: number; data: unknown }> {
+  const res = await handler(
+    new Request(buildUrl(path), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+  );
+  const data = await res.json().catch(() => ({}));
+  return { status: res.status, data };
+}
+
 export async function del(
   handler: (req: Request, ctx: { params: Promise<{ id: string }> }) => Promise<Response>,
   path: string,

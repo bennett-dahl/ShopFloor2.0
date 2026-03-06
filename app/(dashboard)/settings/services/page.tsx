@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { get } from "@/lib/api";
 import ServiceModal, { type Service } from "@/components/entity-modals/ServiceModal";
+import { useCan } from "@/components/MeProvider";
 
 export default function SettingsServicesPage() {
+  const can = useCan("services");
   const [services, setServices] = useState<Service[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,7 @@ export default function SettingsServicesPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Services
         </h1>
+        {can.create && (
         <button
           type="button"
           onClick={openAdd}
@@ -58,6 +61,7 @@ export default function SettingsServicesPage() {
         >
           ➕ Add Service
         </button>
+        )}
       </div>
       <div className="mb-6">
         <input
@@ -80,6 +84,7 @@ export default function SettingsServicesPage() {
           <h3 className="mt-2 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             No services found
           </h3>
+          {can.create && (
           <button
             type="button"
             onClick={openAdd}
@@ -87,6 +92,7 @@ export default function SettingsServicesPage() {
           >
             ➕ Add Service
           </button>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
@@ -132,6 +138,7 @@ export default function SettingsServicesPage() {
                     ${(s.totalCost ?? 0).toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-right">
+                    {can.update && (
                     <button
                       type="button"
                       onClick={() => openEdit(s)}
@@ -139,6 +146,7 @@ export default function SettingsServicesPage() {
                     >
                       Edit
                     </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -155,10 +163,7 @@ export default function SettingsServicesPage() {
           closeModal();
         }}
         editService={editing}
-        onDeleted={() => {
-          load();
-          closeModal();
-        }}
+        onDeleted={can.delete ? () => { load(); closeModal(); } : undefined}
       />
     </>
   );

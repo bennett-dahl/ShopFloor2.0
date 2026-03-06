@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { get } from "@/lib/api";
 import CustomerModal, { type Customer } from "@/components/entity-modals/CustomerModal";
+import { useCan } from "@/components/MeProvider";
 
 export default function CustomersPage() {
+  const can = useCan("customers");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
   const [showDeactivated, setShowDeactivated] = useState(false);
@@ -62,13 +64,15 @@ export default function CustomersPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Customers
         </h1>
-        <button
-          type="button"
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-        >
-          ➕ Add Customer
-        </button>
+        {can.create && (
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+          >
+            ➕ Add Customer
+          </button>
+        )}
       </div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
         <input
@@ -112,17 +116,20 @@ export default function CustomersPage() {
           <p className="mt-1 text-zinc-700 dark:text-zinc-400">
             Get started by adding your first customer.
           </p>
-          <button
-            type="button"
-            onClick={openAdd}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-          >
-            ➕ Add Customer
-          </button>
+          {can.create && (
+            <button
+              type="button"
+              onClick={openAdd}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+            >
+              ➕ Add Customer
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {customers.map((c) => (
+          {customers.map((c) =>
+            can.update ? (
             <button
               type="button"
               key={c._id}
@@ -152,7 +159,36 @@ export default function CustomersPage() {
                 Joined {formatDate(c.createdAt)}
               </p>
             </button>
-          ))}
+            ) : (
+            <div
+              key={c._id}
+              className={`rounded-xl border p-4 text-left dark:border-zinc-700 ${
+                c.isActive === false
+                  ? "border-zinc-200 bg-zinc-100/50 dark:bg-zinc-800/50"
+                  : "border-zinc-200 bg-white dark:bg-zinc-800"
+              }`}
+            >
+              <h3 className="font-semibold text-zinc-900 dark:text-zinc-50">
+                <span className="inline-flex items-center gap-1.5">
+                  {c.firstName} {c.lastName}
+                  {c.isActive === false && (
+                    <span className="rounded bg-zinc-200 px-1.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-600 dark:text-zinc-400">Inactive</span>
+                  )}
+                </span>
+              </h3>
+              <div className="mt-2 space-y-1 text-sm text-zinc-700 dark:text-zinc-400">
+                <p>📧 {c.email}</p>
+                <p>📞 {c.phone}</p>
+                {c.address?.city && (
+                  <p>📍 {[c.address.city, c.address.state].filter(Boolean).join(", ")}</p>
+                )}
+              </div>
+              <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-500">
+                Joined {formatDate(c.createdAt)}
+              </p>
+            </div>
+            )
+          )}
         </div>
       )}
 

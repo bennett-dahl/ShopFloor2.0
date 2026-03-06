@@ -5,31 +5,44 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "@/components/ThemeProvider";
+import { useMe } from "@/components/MeProvider";
+import type { Resource } from "@/lib/permissions";
 
-const navGroups = [
+const navGroups: { label: string; links: { href: string; label: string; resource: Resource }[] }[] = [
   {
     label: "Operations",
     links: [
-      { href: "/workorders", label: "Work Orders" },
-      { href: "/alignments", label: "Alignments" },
+      { href: "/workorders", label: "Work Orders", resource: "workorders" },
+      { href: "/alignments", label: "Alignments", resource: "alignments" },
     ],
   },
   {
     label: "Directory",
     links: [
-      { href: "/customers", label: "Customers" },
-      { href: "/vehicles", label: "Vehicles" },
+      { href: "/customers", label: "Customers", resource: "customers" },
+      { href: "/vehicles", label: "Vehicles", resource: "vehicles" },
     ],
   },
 ];
 
 export default function NavBar() {
   const pathname = usePathname();
+  const { permissions } = useMe();
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
   const groupRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
+
+  const canRead = (resource: Resource) => permissions?.[resource]?.read ?? false;
+  const navGroupsFiltered = navGroups
+    .map((group) => ({
+      ...group,
+      links: group.links.filter((l) => canRead(l.resource)),
+    }))
+    .filter((group) => group.links.length > 0);
+  const showSettings =
+    canRead("settings") || canRead("roles") || canRead("users");
 
   useEffect(() => {
     if (!openGroup) return;
@@ -76,7 +89,7 @@ export default function NavBar() {
               <Link href="/dashboard" className={linkClass("/dashboard")}>
                 Dashboard
               </Link>
-              {navGroups.map((group) => (
+              {navGroupsFiltered.map((group) => (
                 <div key={group.label} className="relative" ref={openGroup === group.label ? groupRef : undefined}>
                   <button
                     type="button"
@@ -113,9 +126,11 @@ export default function NavBar() {
                   )}
                 </div>
               ))}
-              <Link href="/settings" className={linkClass("/settings")}>
-                Settings
-              </Link>
+              {showSettings && (
+                <Link href="/settings" className={linkClass("/settings")}>
+                  Settings
+                </Link>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -180,7 +195,7 @@ export default function NavBar() {
             >
               Dashboard
             </Link>
-            {navGroups.map((group) => (
+            {navGroupsFiltered.map((group) => (
               <div key={group.label}>
                 <button
                   type="button"
@@ -216,13 +231,15 @@ export default function NavBar() {
                 )}
               </div>
             ))}
-            <Link
-              href="/settings"
-              className={linkClass("/settings")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Settings
-            </Link>
+            {showSettings && (
+              <Link
+                href="/settings"
+                className={linkClass("/settings")}
+                onClick={() => setMenuOpen(false)}
+              >
+                Settings
+              </Link>
+            )}
           </div>
         </div>
       </div>

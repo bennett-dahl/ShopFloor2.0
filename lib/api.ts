@@ -16,6 +16,9 @@ async function fetchApi(
     window.location.href = "/login";
     throw new Error("Unauthorized");
   }
+  if (res.status === 403) {
+    throw new Error("You don't have permission to perform this action");
+  }
   return res;
 }
 

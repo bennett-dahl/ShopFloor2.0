@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import { requireAuth } from "@/lib/api-auth";
+import { requirePermissionForMethod } from "@/lib/api-auth";
 import WorkOrder, { getNextWorkOrderNumber } from "@/models/WorkOrder";
 import Vehicle from "@/models/Vehicle";
 import Customer from "@/models/Customer";
@@ -10,7 +10,7 @@ import "@/models/Service";
 import "@/models/User";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("workorders", request.method);
   if (authResult instanceof NextResponse) return authResult;
   try {
     await connectDB();
@@ -77,8 +77,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requirePermissionForMethod("workorders", request.method);
   if (authResult instanceof NextResponse) return authResult;
+  if (!authResult.session?.user?.id) {
+    return NextResponse.json(
+      { message: "No token, authorization denied" },
+      { status: 401 }
+    );
+  }
   try {
     await connectDB();
     const body = await request.json();

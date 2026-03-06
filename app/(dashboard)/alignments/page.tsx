@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { get } from "@/lib/api";
+import { useCan } from "@/components/MeProvider";
 
 type Vehicle = { _id: string; make?: string; model?: string; year?: number };
 type Alignment = {
@@ -21,6 +22,7 @@ type Alignment = {
 };
 
 export default function AlignmentsPage() {
+  const can = useCan("alignments");
   const [alignments, setAlignments] = useState<Alignment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,12 +51,14 @@ export default function AlignmentsPage() {
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           Advanced Alignments
         </h1>
-        <Link
-          href="/alignments/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-        >
-          ➕ New Alignment
-        </Link>
+        {can.create && (
+          <Link
+            href="/alignments/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+          >
+            ➕ New Alignment
+          </Link>
+        )}
       </div>
 
       {loading ? (
@@ -71,12 +75,14 @@ export default function AlignmentsPage() {
           <p className="mt-1 text-zinc-600 dark:text-zinc-400">
             Record before/after alignment data from the Setup Wizard.
           </p>
-          <Link
-            href="/alignments/new"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
-          >
-            ➕ New Alignment
-          </Link>
+          {can.create && (
+            <Link
+              href="/alignments/new"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700"
+            >
+              ➕ New Alignment
+            </Link>
+          )}
         </div>
       ) : (
         <div className="space-y-3 rounded-xl border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">

@@ -1,3 +1,7 @@
+export { default as Role } from "./Role";
+export type { IRole } from "./Role";
+export { default as Invitation } from "./Invitation";
+export type { IInvitation } from "./Invitation";
 export { default as User } from "./User";
 export type { IUser } from "./User";
 export { default as Customer } from "./Customer";

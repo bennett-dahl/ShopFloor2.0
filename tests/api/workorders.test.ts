@@ -9,6 +9,7 @@ import { POST as POST_VEHICLE } from "@/app/api/vehicles/route";
 import mongoose from "mongoose";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
+import Role from "@/models/Role";
 
 async function createCustomerAndVehicle() {
   const { data: customer } = await post(POST_CUSTOMER, "/api/customers", {
@@ -33,13 +34,22 @@ describe("Work Orders API", () => {
 
   beforeAll(async () => {
     await connectDB();
+    let role = await Role.findOne({ name: "Admin" });
+    if (!role) {
+      role = await Role.create({
+        name: "Admin",
+        permissions: [
+          { resource: "workorders", read: true, create: true, update: true, delete: true },
+        ],
+      });
+    }
     await User.findOneAndUpdate(
       { _id: testUserId },
       {
         googleId: "test-google-id",
         email: "test@test.com",
         name: "Test User",
-        role: "technician",
+        role: role._id,
       },
       { upsert: true, new: true }
     );
