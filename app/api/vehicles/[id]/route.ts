@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
 import Vehicle from "@/models/Vehicle";
 import WorkOrder from "@/models/WorkOrder";
+import Customer from "@/models/Customer";
 import mongoose from "mongoose";
 
 export async function GET(
@@ -51,6 +52,15 @@ export async function PUT(
     }
     await connectDB();
     const body = await request.json();
+    if (body.customer != null) {
+      const customer = await Customer.findById(body.customer).lean();
+      if (!customer) {
+        return NextResponse.json(
+          { message: "Customer not found" },
+          { status: 400 }
+        );
+      }
+    }
     const vehicle = await Vehicle.findByIdAndUpdate(id, body, {
       new: true,
       runValidators: true,
@@ -65,9 +75,12 @@ export async function PUT(
     }
     // If the vehicle's customer was updated, propagate to related work orders
     if (Object.prototype.hasOwnProperty.call(body, "customer") && vehicle.customer) {
+      const customerId = typeof vehicle.customer === "object" && vehicle.customer !== null
+        ? (vehicle.customer as { _id: mongoose.Types.ObjectId })._id
+        : vehicle.customer;
       await WorkOrder.updateMany(
         { vehicle: id },
-        { customer: vehicle.customer }
+        { customer: customerId }
       );
     }
     return NextResponse.json(vehicle);
@@ -79,6 +92,7 @@ export async function PUT(
         { status: 400 }
       );
     }
+    console.error("[PUT /api/vehicles/[id]]", err);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }

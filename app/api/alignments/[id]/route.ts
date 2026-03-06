@@ -58,11 +58,27 @@ export async function PUT(
       return NextResponse.json({ message: "Alignment not found" }, { status: 404 });
     }
     await connectDB();
-    void Vehicle;
-    void WorkOrder;
     void AlignmentTemplate;
     void User;
     const body = await request.json();
+    if (body.vehicle != null) {
+      const vehicle = await Vehicle.findById(body.vehicle).lean();
+      if (!vehicle) {
+        return NextResponse.json(
+          { message: "Vehicle not found" },
+          { status: 400 }
+        );
+      }
+    }
+    if (body.workOrder != null && body.workOrder !== "") {
+      const workOrder = await WorkOrder.findById(body.workOrder).lean();
+      if (!workOrder) {
+        return NextResponse.json(
+          { message: "Work order not found" },
+          { status: 400 }
+        );
+      }
+    }
     const alignment = await Alignment.findByIdAndUpdate(id, body, {
       new: true,
       runValidators: true,

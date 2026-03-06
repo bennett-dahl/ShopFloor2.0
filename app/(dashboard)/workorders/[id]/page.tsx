@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { get, post, put, del } from "@/lib/api";
 import VehicleModal from "@/components/entity-modals/VehicleModal";
+import CustomerModal from "@/components/entity-modals/CustomerModal";
 import PartModal from "@/components/entity-modals/PartModal";
 import ServiceModal from "@/components/entity-modals/ServiceModal";
 import { useCan } from "@/components/MeProvider";
@@ -99,6 +100,7 @@ export default function WorkOrderDetailPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [allowChangeCustomerVehicle, setAllowChangeCustomerVehicle] = useState(false);
+  const [addCustomerModalOpen, setAddCustomerModalOpen] = useState(false);
   const [addVehicleModalOpen, setAddVehicleModalOpen] = useState(false);
   const [addPartModalForRow, setAddPartModalForRow] = useState<number | null>(null);
   const [addServiceModalForRow, setAddServiceModalForRow] = useState<number | null>(null);
@@ -381,21 +383,33 @@ export default function WorkOrderDetailPage() {
         )}
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Customer *</label>
-          <select
-            required
-            value={form.customer}
-            onChange={(e) => onCustomerChange(e.target.value)}
-            disabled={!canChangeCustomerVehicle || !canEdit}
-            className={`${selectClass} disabled:opacity-60 disabled:cursor-not-allowed`}
-          >
-            <option value="">Select customer</option>
-            {customers.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.firstName} {c.lastName}
-                {c.email ? ` (${c.email})` : ""}
-              </option>
-            ))}
-          </select>
+          <div className="mt-1 flex gap-2">
+            <select
+              required
+              value={form.customer}
+              onChange={(e) => onCustomerChange(e.target.value)}
+              disabled={!canChangeCustomerVehicle || !canEdit}
+              className={`min-w-0 flex-1 ${selectClass} disabled:opacity-60 disabled:cursor-not-allowed`}
+            >
+              <option value="">Select customer</option>
+              {customers.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.firstName} {c.lastName}
+                  {c.email ? ` (${c.email})` : ""}
+                </option>
+              ))}
+            </select>
+            {canEdit && canChangeCustomerVehicle && (
+              <button
+                type="button"
+                onClick={() => setAddCustomerModalOpen(true)}
+                className="shrink-0 rounded border border-dashed border-zinc-400 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 dark:border-zinc-500 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                title="Add new customer"
+              >
+                + New
+              </button>
+            )}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Vehicle *</label>
@@ -416,11 +430,11 @@ export default function WorkOrderDetailPage() {
                 </option>
               ))}
             </select>
-            {can.update && (
+            {canEdit && canChangeCustomerVehicle && (
             <button
               type="button"
               onClick={() => setAddVehicleModalOpen(true)}
-              disabled={!form.customer || !canChangeCustomerVehicle}
+              disabled={!form.customer}
               className="shrink-0 rounded border border-dashed border-zinc-400 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 disabled:opacity-60 disabled:cursor-not-allowed dark:border-zinc-500 dark:text-zinc-400 dark:hover:bg-zinc-700"
               title={form.customer ? "Add new vehicle for this customer" : "Select a customer first"}
             >
@@ -596,6 +610,19 @@ export default function WorkOrderDetailPage() {
         </div>
       </form>
 
+      <CustomerModal
+        open={addCustomerModalOpen}
+        onClose={() => setAddCustomerModalOpen(false)}
+        onSaved={async (customer) => {
+          await refetchCustomers();
+          setForm((f) => ({
+            ...f,
+            customer: customer._id,
+            vehicle: "",
+          }));
+          setAddCustomerModalOpen(false);
+        }}
+      />
       <VehicleModal
         open={addVehicleModalOpen}
         onClose={() => setAddVehicleModalOpen(false)}

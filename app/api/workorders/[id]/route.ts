@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { requirePermissionForMethod } from "@/lib/api-auth";
 import WorkOrder from "@/models/WorkOrder";
+import Vehicle from "@/models/Vehicle";
 import mongoose from "mongoose";
 
 export async function GET(
@@ -61,6 +62,16 @@ export async function PUT(
         { status: 404 }
       );
     }
+    if (body.vehicle) {
+      const vehicle = await Vehicle.findById(body.vehicle).select("customer").lean();
+      if (!vehicle) {
+        return NextResponse.json(
+          { message: "Vehicle not found" },
+          { status: 400 }
+        );
+      }
+      body.customer = vehicle.customer;
+    }
     doc.set(body);
     await doc.save();
     await doc.populate([
@@ -71,7 +82,8 @@ export async function PUT(
       { path: "servicesUsed.service", select: "name serviceCode totalCost" },
     ]);
     return NextResponse.json(doc);
-  } catch {
+  } catch (err) {
+    console.error("[PUT /api/workorders/[id]]", err);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
   }
 }
