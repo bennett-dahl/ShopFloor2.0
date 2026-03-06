@@ -699,18 +699,17 @@ function AlignmentDetailInner() {
               Saved at {lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
             </span>
           )}
-          <Link
-            href="/alignments"
-            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-          >
-            Cancel
-          </Link>
           <button
-            type="submit"
+            type="button"
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            onClick={async () => {
+              const e = { preventDefault: () => {} } as React.FormEvent;
+              await save(e);
+              router.push("/alignments");
+            }}
+            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 disabled:opacity-50"
           >
-            {saving ? "Saving..." : isNew ? "Create Alignment" : "Save"}
+            Save and Close
           </button>
         </div>
       </form>

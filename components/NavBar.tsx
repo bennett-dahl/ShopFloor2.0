@@ -60,7 +60,7 @@ export default function NavBar() {
     }`;
 
   return (
-    <nav className="border-b border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <nav className="top-0 z-50 border-b border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950 md:sticky">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between sm:h-16">
           <div className="flex flex-1 items-center justify-between gap-4">
