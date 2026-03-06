@@ -673,7 +673,7 @@ async function seed() {
     const alignmentCount = 8;
     for (let i = 0; i < alignmentCount; i++) {
       const vehicle = insertedVehicles[i % insertedVehicles.length];
-      const template = insertedTemplates[i % insertedTemplates.length] as {
+      const template = insertedTemplates[i % insertedTemplates.length] as unknown as {
         _id: mongoose.Types.ObjectId;
         target: Record<string, unknown>;
         alignmentType: string;
